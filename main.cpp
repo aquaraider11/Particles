@@ -23,7 +23,7 @@ std::vector<Particle> particles;
 sf::Vector2i mouseLocation = sf::Vector2i(0,0);
 unsigned int width = 1000, height = 800;
 sf::FloatRect border{-(float)width,(float)height-100,(float)width * 3,100};
-Quadtree<Particle> quadtree( 0.0f, 0.0f, width, height, 0, 4 );
+Quadtree<Particle> quadtree( -10.0f, -10.0f, width + 20, height + 20, 1, 4 );
 
 
 
@@ -188,9 +188,6 @@ int main()
     createParticles(100, 1);
 
 
-    //vector<Object> objects;
-
-
 
     /*
      *  Create button to change background color
@@ -297,6 +294,7 @@ int main()
 
         sdText.setString(sd.GetText());
         window.draw(sdText);
+        quadtree.Draw(window);
     }
 
     return 0;
