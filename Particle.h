@@ -8,20 +8,20 @@
 
 #include <SFML/System.hpp>
 #include <SFML/Graphics/CircleShape.hpp>
-#include "Object.h"
 
 class Particle {
 public:
+    float x, y, size_QT;
     Particle(float x, float y, float size);
     bool interactionsEnabled = false;
     void update();
     void move(const sf::Vector2f* vector, float multiplier);
     void setColor(uint8_t r, uint8_t g, uint8_t b);
     void setSpeed(float speed);
+    sf::FloatRect BBox;
 
     const sf::Vector2f& location() const { return location_; }
     const sf::CircleShape& obj() const { return obj_; }
-    Object QTObj;
 
 
 private:

@@ -5,19 +5,19 @@
 #include <cmath>
 
 #include "Particle.h"
-#include "Object.h"
 
 
-Particle::Particle(float x, float y, float size = 1) : QTObj(x, y, size)
+Particle::Particle(float x, float y, float size = 1)
 {
     location_ = sf::Vector2f(x, y);
     velocity_ = sf::Vector2f(0, 0);
     this->size = size;
 
     obj_ = sf::CircleShape(this->size);
-    obj_.setFillColor(sf::Color(255, 255, 255));
+    //obj_.setFillColor(sf::Color(255, 255, 255));
     obj_.setFillColor(sf::Color::White);
     obj_.setPosition(location_);
+    BBox = obj_.getGlobalBounds();
 }
 
 
@@ -33,10 +33,12 @@ void Particle::update()
     location_ += velocity_;
     updateSize();
 
-    QTObj.x = location_.x;
-    QTObj.y = location_.y;
+    x = location().x;
+    y = location().y;
 
     obj_.setPosition(location_);
+    BBox = obj_.getGlobalBounds();
+
 }
 
 void Particle::move(const sf::Vector2f* vector, float multiplier)
@@ -55,7 +57,7 @@ void Particle::updateSize()
     scale = std::fmin(SCALE_MAX, std::fmax(SCALE_MIN, scale));
 
     // set the scale
-    QTObj.size = scale;
+    size_QT = scale;
     obj_.setScale(scale, scale);
 }
 

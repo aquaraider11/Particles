@@ -1,11 +1,12 @@
 #include "Quadtree.h"
-#include "Object.h"
+#include "Particle.h"
 #include <iostream>
 #include <sstream>
 
 using namespace std;
 
-Quadtree::Quadtree( float _x, float _y, float _width, float _height, int _level, int _maxLevel ) :
+template <class T>
+Quadtree<T>::Quadtree( float _x, float _y, float _width, float _height, int _level, int _maxLevel ) :
         x		( _x ),
         y		( _y ),
         width	( _width ),
@@ -31,7 +32,8 @@ Quadtree::Quadtree( float _x, float _y, float _width, float _height, int _level,
     SE = new Quadtree( x + width / 2.0f, y + height / 2.0f, width / 2.0f, height / 2.0f, level+1, maxLevel );
 }
 
-void Quadtree::AddObject( Object *object ) {
+template <class T>
+void Quadtree<T>::AddObject( T *object ) {
     if ( level == maxLevel ) {
         objects.push_back( object );
         return;
@@ -50,12 +52,13 @@ void Quadtree::AddObject( Object *object ) {
     }
 }
 
-vector<Object*> Quadtree::GetObjectsAt( float _x, float _y ) {
+template <class T>
+vector<T*> Quadtree<T>::GetObjectsAt( float _x, float _y ) {
     if ( level == maxLevel ) {
         return objects;
     }
 
-    vector<Object*> returnObjects, childReturnObjects;
+    vector<T*> returnObjects, childReturnObjects;
     if ( !objects.empty() ) {
         returnObjects = objects;
     }
@@ -83,7 +86,8 @@ vector<Object*> Quadtree::GetObjectsAt( float _x, float _y ) {
     return returnObjects;
 }
 
-void Quadtree::Clear() {
+template <class T>
+void Quadtree<T>::Clear() {
     if ( level == maxLevel ) {
         objects.clear();
         return;
@@ -98,7 +102,8 @@ void Quadtree::Clear() {
     }
 }
 
-void Quadtree::SetFont( const sf::Font &font ) {
+template <class T>
+void Quadtree<T>::SetFont( const sf::Font &font ) {
     text.setFont( font );
     if ( level != maxLevel ) {
         NW->SetFont( font );
@@ -108,7 +113,8 @@ void Quadtree::SetFont( const sf::Font &font ) {
     }
 }
 
-void Quadtree::Draw( sf::RenderTarget &canvas ) {
+template <class T>
+void Quadtree<T>::Draw( sf::RenderTarget &canvas ) {
     stringstream ss;
     ss << objects.size();
     string numObjectsStr = ss.str();
@@ -123,13 +129,16 @@ void Quadtree::Draw( sf::RenderTarget &canvas ) {
     }
 }
 
-bool Quadtree::Contains( Quadtree *child, Object *object ) {
+template <class T>
+bool Quadtree<T>::Contains( Quadtree *child, T *object ) {
     return	 !( object->x < child->x ||
                   object->y < child->y ||
                   object->x > child->x + child->width  ||
                   object->y > child->y + child->height ||
-                  object->x + object->size < child->x ||
-                  object->y + object->size < child->y ||
-                  object->x + object->size > child->x + child->width ||
-                  object->y + object->size > child->y + child->height );
+                  object->x + object->size_QT < child->x ||
+                  object->y + object->size_QT < child->y ||
+                  object->x + object->size_QT > child->x + child->width ||
+                  object->y + object->size_QT > child->y + child->height );
 }
+
+template class Quadtree<Particle>;

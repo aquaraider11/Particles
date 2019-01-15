@@ -8,15 +8,13 @@
 
 using namespace std;
 
-class Quadtree;
-class Object;
-
+template <class T>
 class Quadtree {
 public:
     Quadtree( float x, float y, float width, float height, int level, int maxLevel );
 
-    void					AddObject( Object *object );
-    vector<Object*>			GetObjectsAt( float x, float y );
+    void					AddObject( T *object );
+    vector<T*>			    GetObjectsAt( float x, float y );
     void					Clear();
 
     void					SetFont( const sf::Font &font );
@@ -29,7 +27,7 @@ private:
     float					height;
     int						level;
     int						maxLevel;
-    vector<Object*>			objects;
+    vector<T*>			    objects;
 
     Quadtree *				parent;
     Quadtree *				NW;
@@ -40,7 +38,7 @@ private:
     sf::RectangleShape		shape;
     sf::Text				text;
 
-    bool					Contains( Quadtree *child, Object *object );
+    bool					Contains( Quadtree *child, T *object );
 };
 
 #endif

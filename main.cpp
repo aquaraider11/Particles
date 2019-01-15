@@ -14,7 +14,6 @@
 #include "StatDisplay/FPS.h"
 
 #include "Quadtree.h"
-#include "Object.h"
 
 const float VECTOR_SPEED_MULTIPLIER = 1, GRAVITY_GLOBAL_VARIABLE = 0.2;
 int GRAVITY_ENABLED = 0;
@@ -24,6 +23,8 @@ std::vector<Particle> particles;
 sf::Vector2i mouseLocation = sf::Vector2i(0,0);
 unsigned int width = 1000, height = 800;
 sf::FloatRect border{-(float)width,(float)height-100,(float)width * 3,100};
+Quadtree<Particle> quadtree( 0.0f, 0.0f, width, height, 0, 4 );
+
 
 
 void createParticles(int ammount, float sizeMultiplier)
@@ -57,11 +58,34 @@ void createParticles(int ammount, float sizeMultiplier)
     vecInUse = false;
 }
 
+sf::Vector2f calculateUnitVector(sf::Vector2f source, sf::Vector2f target)
+{
+    sf::Vector2f direction;
+    direction = (sf::Vector2f) target - source;
+    auto length = (float) std::sqrt(std::pow(direction.x, 2) + std::pow(direction.y, 2));
+
+    return sf::Vector2f(direction.x / length, direction.y / length);
+
+}
+
+int collisionCheckCount = 0, maxCollisionsOnRound = 0;
 void updateParticles(Particle *par)
 {
+    sf::Vector2f axisLock(1,1);
+    int intersectCount = 0;
+    std::vector<Particle *> QTResult = quadtree.GetObjectsAt(par->location().x, par->location().y);
+    for (const auto &i : QTResult)
+    {
+        if (par->obj().getGlobalBounds().contains(i->location()))
+        {
+            intersectCount++;
+            collisionCheckCount++;
+        }
+    }
     if (mouseButtonIsPressed) {
         // calculate vector from particle to the mouse
-        sf::Vector2f direction;
+        sf::Vector2f direction = calculateUnitVector(par->location(), sf::Vector2f(mouseLocation));
+        /*
         direction = (sf::Vector2f) mouseLocation - par->location();
 
         // make it a unit vector and apply speed modifiers
@@ -69,14 +93,26 @@ void updateParticles(Particle *par)
         //-----------------------------------[----Anti Clumping Equation----]-------------------------------------------
         direction.x = direction.x / length + (((rand() % 100 + 1) - 50) / 50);
         direction.y = direction.y / length + (((rand() % 100 + 1) - 50) / 50);
+        */
+        direction.x = (direction.x + (((rand() % 100 + 1) - 50) / 50)) * axisLock.x;
+        direction.y = (direction.y + (((rand() % 100 + 1) - 50) / 50)) * axisLock.y;
 
         int reverse = rightButton ? -1 : 1;
 
         // move the vector
         par->move(&direction, VECTOR_SPEED_MULTIPLIER * reverse);
     }
+    if (intersectCount < 1)
+        par->setColor(255,255,255);
+    else
+        par->setColor(255,0,0);
 
     par->update();
+    if (collisionCheckCount > maxCollisionsOnRound)
+        maxCollisionsOnRound = collisionCheckCount;
+    std::cout << maxCollisionsOnRound << std::endl;
+    collisionCheckCount = 0;
+
 }
 
 
@@ -139,17 +175,18 @@ int main()
     sdText.setFont(font_Glob);
     sdText.setFillColor(sf::Color::Green);
 
+    quadtree.SetFont( font_Glob );
+
+
 
 
     int bgColor = 0;
     font_Glob.loadFromFile("arial.ttf");
     sf::RenderWindow window(sf::VideoMode(width, height), "lolkek!");
-    //window.setFramerateLimit(60);
+    window.setFramerateLimit(144);
 
     createParticles(100, 1);
 
-    Quadtree quadtree( 0.0f, 0.0f, width, height, 0, 4 );
-    quadtree.SetFont( font_Glob );
 
     //vector<Object> objects;
 
@@ -194,7 +231,7 @@ int main()
                 }
                 if (event.key.code == sf::Keyboard::F5)
                 {
-                    std::thread t1(createParticles, 5000, 0.5);
+                    std::thread t1(createParticles, 1000, 0.5);
                     t1.detach();
                 }
             }
@@ -233,31 +270,16 @@ int main()
 
 
         }
-
+        quadtree.Clear();
         window.clear(bgColor ? sf::Color::White : sf::Color::Black);
         if (vecInUse)
             continue;
         for (auto &k : particles)
         {
-            quadtree.AddObject( &k.QTObj );
+            quadtree.AddObject( &k );
         }
 
-
-        //quadtree.Draw(window);
-        /*for (const auto &l : particles)
-        {
-            vector<Object*> returnObjects = quadtree.GetObjectsAt(l.location().x, l.location().y);
-            for (const auto &i : returnObjects)
-            {
-
-            }
-        }*/
-        vector<Object*> returnObjects = quadtree.GetObjectsAt( mouseLocation.x, mouseLocation.y );
-        cout << returnObjects.size() << endl;
-
-
         //window.display();
-        quadtree.Clear();
         // to prevent segfault, skip particle update
         // when populating particle vector
 
