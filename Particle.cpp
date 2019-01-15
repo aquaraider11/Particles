@@ -5,6 +5,8 @@
 #include <cmath>
 
 #include "Particle.h"
+#include "Object.h"
+
 
 Particle::Particle(float x, float y, float size = 1)
 {
@@ -15,7 +17,16 @@ Particle::Particle(float x, float y, float size = 1)
     obj_ = sf::CircleShape(this->size);
     obj_.setFillColor(sf::Color(255, 255, 255));
     obj_.setPosition(location_);
+    QTObj_.x = location_.x;
+    QTObj_.y = location_.y;
+    QTObj_.size = obj_.getRadius();
+
+
+
 }
+
+
+
 
 void Particle::update()
 {
@@ -26,6 +37,7 @@ void Particle::update()
     // update location
     location_ += velocity_;
     updateSize();
+
     obj_.setPosition(location_);
 }
 

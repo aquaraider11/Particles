@@ -13,6 +13,9 @@
 #include "StatDisplay/StatDisplay.h"
 #include "StatDisplay/FPS.h"
 
+#include "Quadtree.h"
+#include "Object.h"
+
 const float VECTOR_SPEED_MULTIPLIER = 1, GRAVITY_GLOBAL_VARIABLE = 0.2;
 int GRAVITY_ENABLED = 0;
 
@@ -63,8 +66,9 @@ void updateParticles(Particle *par)
 
         // make it a unit vector and apply speed modifiers
         auto length = (float) std::sqrt(std::pow(direction.x, 2) + std::pow(direction.y, 2));
-        direction.x = direction.x / length;
-        direction.y = direction.y / length;
+        //-----------------------------------[----Anti Clumping Equation----]-------------------------------------------
+        direction.x = direction.x / length + (((rand() % 100 + 1) - 50) / 50);
+        direction.y = direction.y / length + (((rand() % 100 + 1) - 50) / 50);
 
         int reverse = rightButton ? -1 : 1;
 
@@ -140,9 +144,14 @@ int main()
     int bgColor = 0;
     font_Glob.loadFromFile("arial.ttf");
     sf::RenderWindow window(sf::VideoMode(width, height), "lolkek!");
-    window.setFramerateLimit(144);
+    //window.setFramerateLimit(60);
 
-    createParticles(1000, 1);
+    createParticles(100, 1);
+
+    Quadtree quadtree( 0.0f, 0.0f, width, height, 0, 5 );
+    quadtree.SetFont( font_Glob );
+
+    //vector<Object> objects;
 
 
 
@@ -164,8 +173,8 @@ int main()
      */
 
     std::vector<std::string> options1{"BGColor B", "BGColor W"};
-    createButton(1,3,options1,bgColor);
-    createButton(1,2,std::vector<std::string>{"Gravity OFF", "Gravity ON"}, GRAVITY_ENABLED);
+    //createButton(1,3,options1,bgColor);
+    //createButton(1,2,std::vector<std::string>{"Gravity OFF", "Gravity ON"}, GRAVITY_ENABLED);
 
     while (window.isOpen())
     {
@@ -185,7 +194,7 @@ int main()
                 }
                 if (event.key.code == sf::Keyboard::F5)
                 {
-                    std::thread t1(createParticles, 10000, 0.5);
+                    std::thread t1(createParticles, 5000, 0.5);
                     t1.detach();
                 }
             }
@@ -226,11 +235,23 @@ int main()
         }
 
         window.clear(bgColor ? sf::Color::White : sf::Color::Black);
-
-        // to prevent segfault, skip particle update
-        // when populating particle vector
         if (vecInUse)
             continue;
+        for (const auto &k : particles)
+        {
+            //quadtree.AddObject(  );
+        }
+
+
+        quadtree.Draw(window);
+        //vector<Object*> returnObjects = quadtree.GetObjectsAt( mouseLocation.x, mouseLocation.y );
+        //cout << returnObjects.size() << endl;
+
+
+        //window.display();
+        quadtree.Clear();
+        // to prevent segfault, skip particle update
+        // when populating particle vector
 
         // update particles
         for (auto &i : particles)

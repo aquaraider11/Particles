@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-std=c++17)
 
 
-add_executable(${EXECUTABLE_NAME} main.cpp Particle.cpp Particle.h StatDisplay/FPS.cpp StatDisplay/FPS.h StatDisplay/StatDisplay.cpp StatDisplay/StatDisplay.h StatDisplay/IDisplayable.h)
+add_executable(${EXECUTABLE_NAME} main.cpp Particle.cpp Particle.h StatDisplay/FPS.cpp StatDisplay/FPS.h StatDisplay/StatDisplay.cpp StatDisplay/StatDisplay.h StatDisplay/IDisplayable.h Quadtree.cpp Object.cpp Object.h Quadtree.h)
 
 find_package(SFML 2 REQUIRED system window graphics network audio)
 if(SFML_FOUND)
