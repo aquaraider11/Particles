@@ -8,7 +8,7 @@
 #include "Object.h"
 
 
-Particle::Particle(float x, float y, float size = 1)
+Particle::Particle(float x, float y, float size = 1) : QTObj(x, y, size)
 {
     location_ = sf::Vector2f(x, y);
     velocity_ = sf::Vector2f(0, 0);
@@ -16,13 +16,8 @@ Particle::Particle(float x, float y, float size = 1)
 
     obj_ = sf::CircleShape(this->size);
     obj_.setFillColor(sf::Color(255, 255, 255));
+    obj_.setFillColor(sf::Color::White);
     obj_.setPosition(location_);
-    QTObj_.x = location_.x;
-    QTObj_.y = location_.y;
-    QTObj_.size = obj_.getRadius();
-
-
-
 }
 
 
@@ -37,6 +32,9 @@ void Particle::update()
     // update location
     location_ += velocity_;
     updateSize();
+
+    QTObj.x = location_.x;
+    QTObj.y = location_.y;
 
     obj_.setPosition(location_);
 }
@@ -57,6 +55,7 @@ void Particle::updateSize()
     scale = std::fmin(SCALE_MAX, std::fmax(SCALE_MIN, scale));
 
     // set the scale
+    QTObj.size = scale;
     obj_.setScale(scale, scale);
 }
 

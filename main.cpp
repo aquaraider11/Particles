@@ -148,7 +148,7 @@ int main()
 
     createParticles(100, 1);
 
-    Quadtree quadtree( 0.0f, 0.0f, width, height, 0, 5 );
+    Quadtree quadtree( 0.0f, 0.0f, width, height, 0, 4 );
     quadtree.SetFont( font_Glob );
 
     //vector<Object> objects;
@@ -237,15 +237,23 @@ int main()
         window.clear(bgColor ? sf::Color::White : sf::Color::Black);
         if (vecInUse)
             continue;
-        for (const auto &k : particles)
+        for (auto &k : particles)
         {
-            //quadtree.AddObject(  );
+            quadtree.AddObject( &k.QTObj );
         }
 
 
-        quadtree.Draw(window);
-        //vector<Object*> returnObjects = quadtree.GetObjectsAt( mouseLocation.x, mouseLocation.y );
-        //cout << returnObjects.size() << endl;
+        //quadtree.Draw(window);
+        /*for (const auto &l : particles)
+        {
+            vector<Object*> returnObjects = quadtree.GetObjectsAt(l.location().x, l.location().y);
+            for (const auto &i : returnObjects)
+            {
+
+            }
+        }*/
+        vector<Object*> returnObjects = quadtree.GetObjectsAt( mouseLocation.x, mouseLocation.y );
+        cout << returnObjects.size() << endl;
 
 
         //window.display();

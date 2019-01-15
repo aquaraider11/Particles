@@ -21,8 +21,8 @@ public:
 
     const sf::Vector2f& location() const { return location_; }
     const sf::CircleShape& obj() const { return obj_; }
+    Object QTObj;
 
-    const Object& QTObj (float x, float y, float size) const { return QTObj_;}
 
 private:
     const float SCALE_MAX = 4;
@@ -30,7 +30,6 @@ private:
 
     sf::Vector2f location_, velocity_;
     sf::CircleShape obj_;
-    Object QTObj_;
 
 
     float size = 1;
