@@ -55,10 +55,18 @@ void Quadtree<T>::AddObject( T *object ) {
     if (!sf::FloatRect(this->x,this->y, this->width, this->height).contains(object->location()))
         return;
 
-    if (this->objects.size() < this->maxObjects)
+    if (this->objects.size() < this->maxObjects && !this->isSubdivided)
         this->objects.push_back(object);
     else if (this->Subdivide(*this))
     {
+        for (const auto &i : objects)
+        {
+            this->NE->AddObject(i);
+            this->NW->AddObject(i);
+            this->SE->AddObject(i);
+            this->SW->AddObject(i);
+        }
+        this->objects.clear();
         this->NE->AddObject(object);
         this->NW->AddObject(object);
         this->SE->AddObject(object);
