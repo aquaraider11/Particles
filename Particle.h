@@ -8,6 +8,7 @@
 
 #include <SFML/System.hpp>
 #include <SFML/Graphics/CircleShape.hpp>
+#include "Quadtree.h"
 
 class Particle {
 public:
@@ -19,6 +20,8 @@ public:
     void setColor(uint8_t r, uint8_t g, uint8_t b);
     void setSpeed(float speed);
     sf::FloatRect BBox;
+    Quadtree<Particle> *parent = nullptr;
+
 
     const sf::Vector2f& location() const { return location_; }
     const sf::CircleShape& obj() const { return obj_; }

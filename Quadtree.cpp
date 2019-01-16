@@ -6,55 +6,72 @@
 using namespace std;
 
 template <class T>
-Quadtree<T>::Quadtree( float _x, float _y, float _width, float _height, int _level, int _maxLevel ) :
+Quadtree<T>::Quadtree( float _x, float _y, float _width, float _height, int _level, int _maxLevel, int _maxObjects) :
         x		( _x ),
         y		( _y ),
         width	( _width ),
         height	( _height ),
         level	( _level ),
-        maxLevel( _maxLevel )
+        maxLevel( _maxLevel ),
+        maxObjects(_maxObjects)
 {
     shape.setPosition( x, y );
     shape.setSize( sf::Vector2f( width, height ) );
     shape.setFillColor( sf::Color( 0, 0, 0, 0 ) );
     shape.setOutlineThickness( 1.0f );
     shape.setOutlineColor( sf::Color( 64, 128, 255 ) );
-    text.setPosition( x, y + level * 16 );
-    text.setCharacterSize( 12 );
 
-    if ( level == maxLevel ) {
+/*
+    if ( level == _maxLevel ) {
         return;
     }
 
-    NW = new Quadtree( x, y, width / 2.0f, height / 2.0f, level+1, maxLevel );
-    NE = new Quadtree( x + width / 2.0f, y, width / 2.0f, height / 2.0f, level+1, maxLevel );
-    SW = new Quadtree( x, y + height / 2.0f, width / 2.0f, height / 2.0f, level+1, maxLevel );
-    SE = new Quadtree( x + width / 2.0f, y + height / 2.0f, width / 2.0f, height / 2.0f, level+1, maxLevel );
+    NW = new Quadtree( x, y, width / 2.0f, height / 2.0f, level+1, _maxLevel, maxObjects);
+    NE = new Quadtree( x + width / 2.0f, y, width / 2.0f, height / 2.0f, level+1, _maxLevel, maxObjects);
+    SW = new Quadtree( x, y + height / 2.0f, width / 2.0f, height / 2.0f, level+1, _maxLevel, maxObjects);
+    SE = new Quadtree( x + width / 2.0f, y + height / 2.0f, width / 2.0f, height / 2.0f, level+1, _maxLevel, maxObjects);
+*/
+}
+
+template <class T>
+bool Quadtree<T>::Subdivide(Quadtree<T> & target) {
+    if (target.level >= maxLevel)
+        return false;
+    if (target.isSubdivided)
+        return true;
+
+    NW = new Quadtree( x, y, width / 2.0f, height / 2.0f, level+1, maxLevel, maxObjects);
+    NE = new Quadtree( x + width / 2.0f, y, width / 2.0f, height / 2.0f, level+1, maxLevel, maxObjects);
+    SW = new Quadtree( x, y + height / 2.0f, width / 2.0f, height / 2.0f, level+1, maxLevel, maxObjects);
+    SE = new Quadtree( x + width / 2.0f, y + height / 2.0f, width / 2.0f, height / 2.0f, level+1, maxLevel, maxObjects);
+    NW->parent = NE->parent = SE->parent = SW->parent = &target;
+    target.isSubdivided = true;
+    return true;
 }
 
 template <class T>
 void Quadtree<T>::AddObject( T *object ) {
-    if ( level == maxLevel ) {
-        objects.push_back( object );
+
+    if (!sf::FloatRect(this->x,this->y, this->width, this->height).contains(object->location()))
         return;
+
+    if (this->objects.size() < this->maxObjects)
+        this->objects.push_back(object);
+    else if (this->Subdivide(*this))
+    {
+        this->NE->AddObject(object);
+        this->NW->AddObject(object);
+        this->SE->AddObject(object);
+        this->SW->AddObject(object);
     }
-    if ( Contains( NW, object ) ) {
-        NW->AddObject( object ); return;
-    } else if ( Contains( NE, object ) ) {
-        NE->AddObject( object ); return;
-    } else if ( Contains( SW, object ) ) {
-        SW->AddObject( object ); return;
-    } else if ( Contains( SE, object ) ) {
-        SE->AddObject( object ); return;
-    }
-    if ( Contains( this, object ) ) {
-        objects.push_back( object );
-    }
+    else
+        this->objects.push_back(object);
+
 }
 
 template <class T>
 vector<T*> Quadtree<T>::GetObjectsAt( float _x, float _y ) {
-    if ( level == maxLevel ) {
+    if ( !isSubdivided ) {
         return objects;
     }
 
@@ -88,7 +105,7 @@ vector<T*> Quadtree<T>::GetObjectsAt( float _x, float _y ) {
 
 template <class T>
 void Quadtree<T>::Clear() {
-    if ( level == maxLevel ) {
+    if ( !isSubdivided ) {
         objects.clear();
         return;
     } else {
@@ -96,32 +113,22 @@ void Quadtree<T>::Clear() {
         NE->Clear();
         SW->Clear();
         SE->Clear();
+        this->isSubdivided = false;
     }
     if ( !objects.empty() ) {
         objects.clear();
     }
 }
 
-template <class T>
-void Quadtree<T>::SetFont( const sf::Font &font ) {
-    text.setFont( font );
-    if ( level != maxLevel ) {
-        NW->SetFont( font );
-        NE->SetFont( font );
-        SW->SetFont( font );
-        SE->SetFont( font );
-    }
-}
+
 
 template <class T>
 void Quadtree<T>::Draw( sf::RenderTarget &canvas ) {
     stringstream ss;
     ss << objects.size();
     string numObjectsStr = ss.str();
-    text.setString( numObjectsStr );
     canvas.draw( shape );
-    canvas.draw( text );
-    if ( level != maxLevel ) {
+    if ( isSubdivided ) {
         NW->Draw( canvas );
         NE->Draw( canvas );
         SW->Draw( canvas );

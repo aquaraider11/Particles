@@ -11,13 +11,12 @@ using namespace std;
 template <class T>
 class Quadtree {
 public:
-    Quadtree( float x, float y, float width, float height, int level, int maxLevel );
+    Quadtree( float x, float y, float width, float height, int level, int maxLevel, int maxObjects);
 
     void					AddObject( T *object );
     vector<T*>			    GetObjectsAt( float x, float y );
     void					Clear();
 
-    void					SetFont( const sf::Font &font );
     void					Draw( sf::RenderTarget &canvas );
 
 private:
@@ -27,18 +26,20 @@ private:
     float					height;
     int						level;
     int						maxLevel;
+    int                     maxObjects;
     vector<T*>			    objects;
 
     Quadtree *				parent;
-    Quadtree *				NW;
-    Quadtree *				NE;
-    Quadtree *				SW;
-    Quadtree *				SE;
+    Quadtree *				NW = nullptr;
+    Quadtree *				NE = nullptr;
+    Quadtree *				SW = nullptr;
+    Quadtree *				SE = nullptr;
 
     sf::RectangleShape		shape;
-    sf::Text				text;
 
     bool					Contains( Quadtree *child, T *object );
+    bool                    isSubdivided = false;
+    bool                    Subdivide(Quadtree<T> & target);
 };
 
 #endif
