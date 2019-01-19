@@ -219,7 +219,7 @@ int main()
                 }
                 if (event.key.code == sf::Keyboard::F5)
                 {
-                    std::thread t1(createParticles, 1500, 1);
+                    std::thread t1(createParticles, 1500, 0.5);
                     t1.detach();
                 }
             }

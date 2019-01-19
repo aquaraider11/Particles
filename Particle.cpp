@@ -3,7 +3,6 @@
 //
 
 #include <cmath>
-
 #include "Particle.h"
 
 
@@ -52,8 +51,8 @@ void Particle::update()
 void Particle::move(const sf::Vector2f* vector, float multiplier)
 {
     // apply vector to velocity
-    velocity_.x += vector->x * speed * multiplier + (((rand() % 100 +1) - 50) / 55);
-    velocity_.y += vector->y * speed * multiplier + (((rand() % 100 +1) - 50) / 55);
+    velocity_.x += vector->x * speed * multiplier + ((float)((rand() % 100 +1) - 50) / 150);
+    velocity_.y += vector->y * speed * multiplier + ((float)((rand() % 100 +1) - 50) / 150);
 }
 
 void Particle::updateSize()
