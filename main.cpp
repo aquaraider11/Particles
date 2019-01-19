@@ -23,7 +23,7 @@ std::vector<Particle> particles;
 sf::Vector2i mouseLocation = sf::Vector2i(0,0);
 unsigned int width = 1000, height = 800;
 sf::FloatRect border{-(float)width,(float)height-100,(float)width * 3,100};
-Quadtree<Particle> quadtree( -10.0f, -10.0f, width + 20, height + 20, 0, 100, 5);
+Quadtree<Particle> quadtree( -10.0f, -10.0f, width + 20, height + 20, 0, 500, 3);
 
 
 
@@ -44,11 +44,11 @@ void createParticles(int ammount, float sizeMultiplier)
 
         par.setColor(rand() % 255 + 1, rand() % 255 + 1, rand() % 255 + 1);
 
-        float rng = rand() % 100 + 1;
-        if (rng < 80)
-            rng += 20;
+        float rng = rand() % 1000 + 1;
+        if (rng < 800)
+            rng += 200;
 
-        par.setSpeed(rng / 100);
+        par.setSpeed(rng / 1000);
 
         particles.push_back(par);
 
@@ -68,50 +68,42 @@ sf::Vector2f calculateUnitVector(sf::Vector2f source, sf::Vector2f target)
 
 }
 
-int collisionCheckCount = 0, maxCollisionsOnRound = 0;
+//int collisionCheckCount = 0, maxCollisionsOnRound = 0;
 void updateParticles(Particle *par)
 {
     sf::Vector2f axisLock(1,1);
     int intersectCount = 0;
     std::vector<Particle *> QTResult = quadtree.GetObjectsAt(par->location().x, par->location().y);
-    for (const auto &i : QTResult)
+    for (auto &i : QTResult)
     {
         if (par->obj().getGlobalBounds().contains(i->location()))
         {
             intersectCount++;
-            collisionCheckCount++;
+
+            par->setColor(255,0,0);
+            //collisionCheckCount++;
         }
+        if (i->obj().getGlobalBounds().contains(par->location()))
+        {
+            i->setColor(255, 0, 0);
+            intersectCount++;
+        }
+
     }
     if (mouseButtonIsPressed) {
-        // calculate vector from particle to the mouse
-        sf::Vector2f direction = calculateUnitVector(par->location(), sf::Vector2f(mouseLocation));
-        /*
-        direction = (sf::Vector2f) mouseLocation - par->location();
-
-        // make it a unit vector and apply speed modifiers
-        auto length = (float) std::sqrt(std::pow(direction.x, 2) + std::pow(direction.y, 2));
-        //-----------------------------------[----Anti Clumping Equation----]-------------------------------------------
-        direction.x = direction.x / length + (((rand() % 100 + 1) - 50) / 50);
-        direction.y = direction.y / length + (((rand() % 100 + 1) - 50) / 50);
-        */
-        direction.x = (direction.x + (((rand() % 100 + 1) - 50) / 50)) * axisLock.x;
-        direction.y = (direction.y + (((rand() % 100 + 1) - 50) / 50)) * axisLock.y;
-
         int reverse = rightButton ? -1 : 1;
-
         // move the vector
-        par->move(&direction, VECTOR_SPEED_MULTIPLIER * reverse);
+        par->moveTowards(sf::Vector2f(mouseLocation), VECTOR_SPEED_MULTIPLIER * reverse);
     }
     if (intersectCount < 1)
         par->setColor(255,255,255);
-    else
-        par->setColor(255,0,0);
 
     par->update();
-    if (collisionCheckCount > maxCollisionsOnRound)
+
+    /*if (collisionCheckCount > maxCollisionsOnRound)
         maxCollisionsOnRound = collisionCheckCount;
     std::cout << maxCollisionsOnRound << std::endl;
-    collisionCheckCount = 0;
+    collisionCheckCount = 0;*/
 
 }
 
@@ -227,7 +219,7 @@ int main()
                 }
                 if (event.key.code == sf::Keyboard::F5)
                 {
-                    std::thread t1(createParticles, 1000, 0.5);
+                    std::thread t1(createParticles, 1500, 1);
                     t1.detach();
                 }
             }

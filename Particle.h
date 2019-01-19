@@ -19,6 +19,7 @@ public:
     void move(const sf::Vector2f* vector, float multiplier);
     void setColor(uint8_t r, uint8_t g, uint8_t b);
     void setSpeed(float speed);
+    void moveTowards(sf::Vector2f, float);
     sf::FloatRect BBox;
     Quadtree<Particle> *parent = nullptr;
 

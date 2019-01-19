@@ -21,7 +21,15 @@ Particle::Particle(float x, float y, float size = 1)
 }
 
 
+void Particle::moveTowards(sf::Vector2f target, float multiplier)
+{
+    sf::Vector2f direction;
+    direction = (sf::Vector2f) target - this->location();
+    auto length = (float) std::sqrt(std::pow(direction.x, 2) + std::pow(direction.y, 2));
 
+    direction = sf::Vector2f(direction.x / length, direction.y / length);
+    this->move( &direction, multiplier);
+}
 
 void Particle::update()
 {
@@ -44,8 +52,8 @@ void Particle::update()
 void Particle::move(const sf::Vector2f* vector, float multiplier)
 {
     // apply vector to velocity
-    velocity_.x += vector->x * speed * multiplier;
-    velocity_.y += vector->y * speed * multiplier;
+    velocity_.x += vector->x * speed * multiplier + (((rand() % 100 +1) - 50) / 55);
+    velocity_.y += vector->y * speed * multiplier + (((rand() % 100 +1) - 50) / 55);
 }
 
 void Particle::updateSize()
