@@ -51,12 +51,13 @@ bool Quadtree<T>::Subdivide(Quadtree<T> & target) {
 
 template <class T>
 void Quadtree<T>::AddObject( T *object ) {
+    T * Obj = object;
 
-    if (!sf::FloatRect(this->x,this->y, this->width, this->height).contains(object->location()))
+    if (!sf::FloatRect(this->x,this->y, this->width, this->height).contains(Obj->location()))
         return;
 
     if (this->objects.size() < this->maxObjects && !this->isSubdivided)
-        this->objects.push_back(object);
+        this->objects.push_back(Obj);
     else if (this->Subdivide(*this))
     {
         for (const auto &i : objects)
@@ -67,10 +68,10 @@ void Quadtree<T>::AddObject( T *object ) {
             this->SW->AddObject(i);
         }
         this->objects.clear();
-        this->NE->AddObject(object);
-        this->NW->AddObject(object);
-        this->SE->AddObject(object);
-        this->SW->AddObject(object);
+        this->NE->AddObject(Obj);
+        this->NW->AddObject(Obj);
+        this->SE->AddObject(Obj);
+        this->SW->AddObject(Obj);
     }
     else
         this->objects.push_back(object);
@@ -126,6 +127,7 @@ void Quadtree<T>::Clear() {
     if ( !objects.empty() ) {
         objects.clear();
     }
+
 }
 
 

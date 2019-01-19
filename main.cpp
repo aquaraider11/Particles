@@ -9,6 +9,8 @@
 #include <cmath>
 #include <mutex>
 
+#include <parallel/algorithm>
+
 #include "Particle.h"
 #include "StatDisplay/StatDisplay.h"
 #include "StatDisplay/FPS.h"
@@ -272,9 +274,14 @@ int main()
         // when populating particle vector
 
         // update particles
+        __gnu_parallel::for_each(particles.begin(), particles.end(), [](auto &n)
+        {
+            updateParticles(&n);
+
+        });
         for (auto &i : particles)
         {
-            updateParticles(&i);
+            //updateParticles(&i);
             window.draw(i.obj());
         }
         for (const auto &j : buttons)
