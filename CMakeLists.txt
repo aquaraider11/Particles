@@ -10,7 +10,8 @@ add_compile_options(-std=c++17 -fopenmp)
 add_executable(${EXECUTABLE_NAME} main.cpp Particle.cpp Particle.h StatDisplay/FPS.cpp StatDisplay/FPS.h StatDisplay/StatDisplay.cpp StatDisplay/StatDisplay.h StatDisplay/IDisplayable.h Quadtree.h Quadtree.cpp)
 
 FIND_PACKAGE(OpenMP REQUIRED)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} -O0")
 
 find_package(SFML 2 REQUIRED system window graphics network audio)
 if(SFML_FOUND)

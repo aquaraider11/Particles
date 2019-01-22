@@ -114,19 +114,48 @@ vector<T*> Quadtree<T>::GetObjectsAt( float _x, float _y ) {
 
 template <class T>
 void Quadtree<T>::Clear() {
-    if ( !isSubdivided ) {
+
+    //While we are not in the root tree
+    while (this->level > 0)
+    {
+        //If the tree is not subdivided, clear it, and delete the tree
+        if (!isSubdivided)
+        {
+            objects.clear();
+            delete(this);
+            return;
+        } else // Else let's clear the subtrees first
+        {
+            NW->Clear();
+            NE->Clear();
+            SW->Clear();
+            SE->Clear();
+            this->isSubdivided = false;
+        }//Check for funny edge case **DO NOT DELETE**
+        if (!objects.empty())
+        {
+            objects.clear();
+        }
+    }
+    //When we get to the root tree (this is probably where the clear function starts, because you give it the root tree)
+    //If the tree is not subdivided, let's just clear the objects and return
+    if (!isSubdivided)
+    {
         objects.clear();
         return;
-    } else {
+    } else //Else we'll clear the subtrees first, and get to use the fancy while loop above to DELETE TREES̃~!!!
+    {
         NW->Clear();
         NE->Clear();
         SW->Clear();
         SE->Clear();
         this->isSubdivided = false;
-    }
-    if ( !objects.empty() ) {
+    }//Let's check the funny edge case again for funzies.
+    if (!objects.empty())
+    {
         objects.clear();
     }
+
 
 }
 
