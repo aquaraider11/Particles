@@ -18,7 +18,7 @@
 #include "Quadtree.h"
 
 const float VECTOR_SPEED_MULTIPLIER = 1, GRAVITY_GLOBAL_VARIABLE = 0.2;
-int GRAVITY_ENABLED = 0;
+int GRAVITY_ENABLED = 0, DRAWQT = 0;
 
 bool vecInUse = false, mouseButtonIsPressed = false, rightButton = false;
 std::vector<Particle> particles;
@@ -92,13 +92,14 @@ void updateParticles(Particle *par)
         }
 
     }
+    if (intersectCount < 1)
+        par->setColor(255,255,255);
+
     if (mouseButtonIsPressed) {
         int reverse = rightButton ? -1 : 1;
         // move the vector
         par->moveTowards(sf::Vector2f(mouseLocation), VECTOR_SPEED_MULTIPLIER * reverse);
     }
-    if (intersectCount < 1)
-        par->setColor(255,255,255);
 
     par->update();
 
@@ -200,8 +201,9 @@ int main()
      */
 
     std::vector<std::string> options1{"BGColor B", "BGColor W"};
-    //createButton(1,3,options1,bgColor);
-    //createButton(1,2,std::vector<std::string>{"Gravity OFF", "Gravity ON"}, GRAVITY_ENABLED);
+    createButton(1,3,options1,bgColor);
+    createButton(1,2,std::vector<std::string>{"Gravity OFF", "Gravity ON"}, GRAVITY_ENABLED);
+    createButton(1,4,std::vector<std::string>{"Hide QT", "Draw QT"}, DRAWQT);
 
     while (window.isOpen())
     {
@@ -221,7 +223,7 @@ int main()
                 }
                 if (event.key.code == sf::Keyboard::F5)
                 {
-                    std::thread t1(createParticles, 5000, 0.5);
+                    std::thread t1(createParticles, 3000, 0.5);
                     t1.detach();
                 }
             }
@@ -260,16 +262,16 @@ int main()
 
 
         }
-        quadtree.Clear();
         window.clear(bgColor ? sf::Color::White : sf::Color::Black);
+
         if (vecInUse)
             continue;
+        quadtree.Clear();
         for (auto &k : particles)
         {
             quadtree.AddObject( &k );
         }
 
-        //window.display();
         // to prevent segfault, skip particle update
         // when populating particle vector
 
@@ -284,6 +286,8 @@ int main()
             //updateParticles(&i);
             window.draw(i.obj());
         }
+        if (DRAWQT)
+            quadtree.Draw(window);
         for (const auto &j : buttons)
         {
             window.draw(j.rect);
@@ -292,7 +296,6 @@ int main()
 
         sdText.setString(sd.GetText());
         window.draw(sdText);
-        quadtree.Draw(window);
     }
 
     return 0;
