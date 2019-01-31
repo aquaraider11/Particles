@@ -25,7 +25,7 @@ std::vector<Particle> particles;
 sf::Vector2i mouseLocation = sf::Vector2i(0,0);
 unsigned int width = 1000, height = 800;
 sf::FloatRect border{-(float)width,(float)height-100,(float)width * 3,100};
-Quadtree<Particle> quadtree( -10.0f, -10.0f, width + 20, height + 20, 0, 500, 3);
+Quadtree<Particle> quadtree( -10.0f, -10.0f, width + 20, height + 20, 0, 500, 8);
 
 
 

@@ -24,6 +24,7 @@ private:
     float					y;
     float					width;
     float					height;
+    sf::FloatRect           FR;
     int						level;
     int						maxLevel;
     int                     maxObjects;

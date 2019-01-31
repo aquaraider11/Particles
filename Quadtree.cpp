@@ -20,6 +20,10 @@ Quadtree<T>::Quadtree( float _x, float _y, float _width, float _height, int _lev
     shape.setFillColor( sf::Color( 0, 0, 0, 0 ) );
     shape.setOutlineThickness( 1.0f );
     shape.setOutlineColor( sf::Color( 64, 128, 255 ) );
+    FR.left = x;
+    FR.top = y;
+    FR.width = width;
+    FR.height = height;
 
 /*
     if ( level == _maxLevel ) {
@@ -41,9 +45,13 @@ bool Quadtree<T>::Subdivide(Quadtree<T> & target) {
         return true;
 
     NW = new Quadtree( x, y, width / 2.0f, height / 2.0f, level+1, maxLevel, maxObjects);
+    NW->objects.reserve(maxObjects+2);
     NE = new Quadtree( x + width / 2.0f, y, width / 2.0f, height / 2.0f, level+1, maxLevel, maxObjects);
+    NE->objects.reserve(maxObjects+2);
     SW = new Quadtree( x, y + height / 2.0f, width / 2.0f, height / 2.0f, level+1, maxLevel, maxObjects);
+    SW->objects.reserve(maxObjects+2);
     SE = new Quadtree( x + width / 2.0f, y + height / 2.0f, width / 2.0f, height / 2.0f, level+1, maxLevel, maxObjects);
+    SE->objects.reserve(maxObjects+2);
     NW->parent = NE->parent = SE->parent = SW->parent = &target;
     target.isSubdivided = true;
     return true;
@@ -53,11 +61,11 @@ template <class T>
 void Quadtree<T>::AddObject( T *object ) {
     T * Obj = object;
 
-    if (!sf::FloatRect(this->x,this->y, this->width, this->height).contains(Obj->location()))
+    if (!FR.contains(Obj->location()))
         return;
 
     if (this->objects.size() < this->maxObjects && !this->isSubdivided)
-        this->objects.push_back(Obj);
+        this->objects.emplace_back(Obj);
     else if (this->Subdivide(*this))
     {
         for (const auto &i : objects)
@@ -74,7 +82,7 @@ void Quadtree<T>::AddObject( T *object ) {
         this->SW->AddObject(Obj);
     }
     else
-        this->objects.push_back(object);
+        this->objects.emplace_back(object);
 
 }
 
