@@ -27,6 +27,43 @@ unsigned int width = 1000, height = 800;
 sf::FloatRect border{-(float)width,(float)height-100,(float)width * 3,100};
 Quadtree<Particle> quadtree( -10.0f, -10.0f, width + 20, height + 20, 0, 500, 8);
 
+int threadCount = std::thread::hardware_concurrency();
+std::vector<std::vector<Particle *>> subVectors;
+void initializeThreading()
+{
+    for (int i = 0; i < threadCount; ++i)
+    {
+        std::vector<Particle*> temp;
+        temp.reserve(50);
+        subVectors.push_back(temp);
+    }
+}
+
+void fillThreadVectors(std::vector<Particle> &input)
+{
+    int elements = floor(input.size() / threadCount), indexinInputVec = 0;
+    for (int i = 0; i < threadCount; ++i)
+    {
+        std::vector<Particle *> temp;
+        if(i < threadCount-1)
+        {
+            for (int j = 0; j < elements; ++j)
+            {
+                temp.push_back(&input[j*i]);
+                indexinInputVec++;
+            }
+        } else
+        {
+            for (int k = indexinInputVec; k < input.size(); ++k)
+            {
+                temp.push_back(&input[k]);
+            }
+        }
+        subVectors[i] = temp;
+    }
+}
+
+
 
 
 void createParticles(int ammount, float sizeMultiplier)
@@ -56,7 +93,7 @@ void createParticles(int ammount, float sizeMultiplier)
 
 
     }
-
+    fillThreadVectors(particles);
     vecInUse = false;
 }
 
@@ -110,6 +147,14 @@ void updateParticles(Particle *par)
 
 }
 
+void updateThreads(int index)
+{
+    for (auto &i : subVectors[index])
+    {
+        updateParticles(i);
+    }
+}
+
 
 /*
  * Font Global variable and button structure
@@ -158,9 +203,56 @@ void createButton(int col, int row, std::vector<std::string> optionTexts, int& t
 }
 
 
+/*
+void threadFunc(std::vector<Particle> inputVec, void(*inputFunc)(Particle *))
+{
+
+    for (int i = 0; i < inputVec.size(); ++i)
+    {
+        inputFunc(&inputVec[i]);
+    }
+}
+
+//template<typename T>
+void customForEach_Threaded(std::vector<Particle> inputVec, void(*inputFunc)(Particle *))
+{
+    int threadCount = std::thread::hardware_concurrency();
+    int elements = inputVec.size() / threadCount;
+
+
+    int indexinInputVec = 0;
+    for (int i = 0; i < threadCount; ++i)
+    {
+        std::vector<Particle> *tempVec;
+        tempVec->reserve(elements);
+        if(i < threadCount-1)
+        {
+            for (int j = 0; j < elements; ++j)
+            {
+                tempVec->emplace_back(inputVec[i * j]);
+                indexinInputVec++;
+            }
+        } else
+        {
+            for (int k = indexinInputVec; k < inputVec.size(); ++k)
+            {
+                tempVec->push_back(inputVec[k]);
+            }
+        }
+        //threadFunc(*tempVec,inputFunc);
+        std::thread t1(threadFunc, tempVec, inputFunc);
+        t1.detach();
+    }
+
+
+}*/
+
+
+
 
 int main()
 {
+    initializeThreading();
     StatDisplay sd;
 
     FPS fps;
@@ -174,36 +266,24 @@ int main()
 
 
 
+
     int bgColor = 0;
     font_Glob.loadFromFile("arial.ttf");
     sf::RenderWindow window(sf::VideoMode(width, height), "lolkek!");
     window.setFramerateLimit(144);
 
-    createParticles(100, 1);
+    createParticles(64, 1);
 
-
-
-    /*
-     *  Create button to change background color
-     *  First 2 variables set the button location (cols, rows)
-     *  Third variable takes vector of strings as input to define how many options button has and what are the texts of those buttons
-     *  (std::vector<std::string> foo{"option1", "option2")
-     *  If you don't want the text to change, but want multiple options, just add several same texts to above mentioned vector
-     *  Last option is integer, that gets iterated by the button, and flipped to 0 when reaching foo.size() -1 of above mentioned vector
-     *
-     *  If only 2 options are mentioned, the int pointed in the last variable can be used as a boolean but the values are "flipped"
-     *                        Function     Button         foo[1]            foo[0]
-     *                          \/          \/              \/                \/
-     *  for example (        window.clear(bgColor ? sf::Color::White : sf::Color::Black);       )
-     *
-     *  Witch is reasonable considering that boolean true is 1, and false is 0
-     *
-     */
 
     std::vector<std::string> options1{"BGColor B", "BGColor W"};
     createButton(1,3,options1,bgColor);
     createButton(1,2,std::vector<std::string>{"Gravity OFF", "Gravity ON"}, GRAVITY_ENABLED);
     createButton(1,4,std::vector<std::string>{"Hide QT", "Draw QT"}, DRAWQT);
+
+
+    typedef void(*UpdateParticlesFunction)(Particle*);
+
+    UpdateParticlesFunction update = updateParticles;
 
     while (window.isOpen())
     {
@@ -276,11 +356,20 @@ int main()
         // when populating particle vector
 
         // update particles
-        __gnu_parallel::for_each(particles.begin(), particles.end(), [](auto &n)
+        //auto funcPoint = updateParticles;
+        //customForEach_Threaded( particles, updateParticles);
+
+        for (int l = 0; l < threadCount; ++l)
+        {
+            std::thread concurrencyThread(updateThreads, l);
+            concurrencyThread.detach();
+        }
+
+        /*__gnu_parallel::for_each(particles.begin(), particles.end(), [](auto &n)
         {
             updateParticles(&n);
 
-        });
+        });*/
         for (auto &i : particles)
         {
             //updateParticles(&i);
@@ -300,3 +389,4 @@ int main()
 
     return 0;
 }
+
