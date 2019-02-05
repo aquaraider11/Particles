@@ -23,10 +23,8 @@ public:
     sf::FloatRect BBox;
     Quadtree<Particle> *parent = nullptr;
 
-
     const sf::Vector2f& location() const { return location_; }
     const sf::CircleShape& obj() const { return obj_; }
-
 
 private:
     const float SCALE_MAX = 4;

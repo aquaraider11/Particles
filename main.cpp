@@ -5,9 +5,9 @@
 #include <SFML/Graphics.hpp>
 #include <thread>
 #include <numeric>
-#include <future>
+//#include <future>
 #include <cmath>
-#include <mutex>
+//#include <mutex>
 
 #include <parallel/algorithm>
 
@@ -29,8 +29,18 @@ Quadtree<Particle> quadtree( -10.0f, -10.0f, width + 20, height + 20, 0, 500, 8)
 
 int threadCount = std::thread::hardware_concurrency();
 std::vector<std::vector<Particle *>> subVectors;
+
+struct threadObj
+{
+    std::vector<Particle *> particles;
+    std::thread th;
+    bool done;
+};
+std::vector<threadObj *> threads;
+
 void initializeThreading()
 {
+    threads.reserve(threadCount);
     for (int i = 0; i < threadCount; ++i)
     {
         std::vector<Particle*> temp;
@@ -64,8 +74,6 @@ void fillThreadVectors(std::vector<Particle> &input)
 }
 
 
-
-
 void createParticles(int ammount, float sizeMultiplier)
 {
     if (vecInUse)
@@ -88,7 +96,6 @@ void createParticles(int ammount, float sizeMultiplier)
             rng += 200;
 
         par.setSpeed(rng / 1000);
-
         particles.push_back(par);
 
 
@@ -147,11 +154,30 @@ void updateParticles(Particle *par)
 
 }
 
+
 void updateThreads(int index)
 {
     for (auto &i : subVectors[index])
     {
         updateParticles(i);
+    }
+}
+
+void updateThreads2(bool *done, std::vector<Particle *> input)
+{
+    std::cout << "Thread started:" << std::endl;
+    while (true)
+    {
+        if (done)
+            continue;
+
+        for (const auto &i : input)
+        {
+            std::cout << "Updating particles..." << std::endl;
+            updateParticles(i);
+        }
+
+        *done = true;
     }
 }
 
@@ -203,56 +229,13 @@ void createButton(int col, int row, std::vector<std::string> optionTexts, int& t
 }
 
 
-/*
-void threadFunc(std::vector<Particle> inputVec, void(*inputFunc)(Particle *))
-{
-
-    for (int i = 0; i < inputVec.size(); ++i)
-    {
-        inputFunc(&inputVec[i]);
-    }
-}
-
-//template<typename T>
-void customForEach_Threaded(std::vector<Particle> inputVec, void(*inputFunc)(Particle *))
-{
-    int threadCount = std::thread::hardware_concurrency();
-    int elements = inputVec.size() / threadCount;
-
-
-    int indexinInputVec = 0;
-    for (int i = 0; i < threadCount; ++i)
-    {
-        std::vector<Particle> *tempVec;
-        tempVec->reserve(elements);
-        if(i < threadCount-1)
-        {
-            for (int j = 0; j < elements; ++j)
-            {
-                tempVec->emplace_back(inputVec[i * j]);
-                indexinInputVec++;
-            }
-        } else
-        {
-            for (int k = indexinInputVec; k < inputVec.size(); ++k)
-            {
-                tempVec->push_back(inputVec[k]);
-            }
-        }
-        //threadFunc(*tempVec,inputFunc);
-        std::thread t1(threadFunc, tempVec, inputFunc);
-        t1.detach();
-    }
-
-
-}*/
-
 
 
 
 int main()
 {
     initializeThreading();
+    std::cout << threadCount << std::endl;
     StatDisplay sd;
 
     FPS fps;
@@ -261,9 +244,6 @@ int main()
     sf::Text sdText;
     sdText.setFont(font_Glob);
     sdText.setFillColor(sf::Color::Green);
-
-
-
 
 
 
@@ -280,10 +260,14 @@ int main()
     createButton(1,2,std::vector<std::string>{"Gravity OFF", "Gravity ON"}, GRAVITY_ENABLED);
     createButton(1,4,std::vector<std::string>{"Hide QT", "Draw QT"}, DRAWQT);
 
+    for (int l = 0; l < threadCount; ++l)
+    {
+        threadObj *thread = new threadObj;
+        thread->done = false;
+        thread->th = std::thread(updateThreads2, &thread->done, subVectors[l]);
+        threads.push_back(thread);
+    }
 
-    typedef void(*UpdateParticlesFunction)(Particle*);
-
-    UpdateParticlesFunction update = updateParticles;
 
     while (window.isOpen())
     {
@@ -303,7 +287,7 @@ int main()
                 }
                 if (event.key.code == sf::Keyboard::F5)
                 {
-                    std::thread t1(createParticles, 3000, 0.5);
+                    std::thread t1(createParticles, 1000, 0.5);
                     t1.detach();
                 }
             }
@@ -359,17 +343,57 @@ int main()
         //auto funcPoint = updateParticles;
         //customForEach_Threaded( particles, updateParticles);
 
-        for (int l = 0; l < threadCount; ++l)
+
+
+        /*for (int l = 0; l < threadCount; ++l)
         {
             std::thread concurrencyThread(updateThreads, l);
             concurrencyThread.detach();
-        }
+
+        }*/
 
         /*__gnu_parallel::for_each(particles.begin(), particles.end(), [](auto &n)
         {
             updateParticles(&n);
 
         });*/
+
+        /*__gnu_parallel::for_each(subVectors.begin(), subVectors.end(),
+        {
+            updateThreads();
+
+        });*/
+        for (const auto &l : threads)
+        {
+            l->done = false;
+        }
+
+        for (const auto &j : buttons)
+        {
+            window.draw(j.rect);
+            window.draw(j.text);
+        }
+
+        int loopcount = 0;
+        while (true)
+        {
+            loopcount++;
+            unsigned int completedThreads = 0;
+            for (const auto &i : threads)
+                if (&i->done)
+                    completedThreads++;
+
+            if (completedThreads >= threadCount)
+                break;
+            if (loopcount > 1000)
+            {
+                std::cout << "Infinite Loop" << std::endl;
+                window.close();
+                break;
+            }
+            
+        }
+
         for (auto &i : particles)
         {
             //updateParticles(&i);
@@ -377,14 +401,16 @@ int main()
         }
         if (DRAWQT)
             quadtree.Draw(window);
-        for (const auto &j : buttons)
-        {
-            window.draw(j.rect);
-            window.draw(j.text);
-        }
+
 
         sdText.setString(sd.GetText());
         window.draw(sdText);
+
+
+    }
+    for (const auto &m : threads)
+    {
+        delete(m);
     }
 
     return 0;
