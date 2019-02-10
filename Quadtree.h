@@ -15,6 +15,8 @@ public:
 
     void					AddObject( T *object );
     vector<T*>			    GetObjectsAt( float x, float y );
+    vector<T*>              GetObjectsFrom();
+    vector<int>             GetLeafObjectsCount();
     void					Clear();
 
     void					Draw( sf::RenderTarget &canvas );

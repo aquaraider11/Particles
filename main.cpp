@@ -8,6 +8,8 @@
 //#include <future>
 #include <cmath>
 //#include <mutex>
+#include <chrono>
+#include <iomanip>
 
 #include <parallel/algorithm>
 
@@ -52,6 +54,7 @@ void initializeThreading()
 void fillThreadVectors(std::vector<Particle> &input)
 {
     int elements = floor(input.size() / threadCount), indexinInputVec = 0;
+    std::cout << "elements = " << elements << std::endl;
     for (int i = 0; i < threadCount; ++i)
     {
         std::vector<Particle *> temp;
@@ -59,7 +62,7 @@ void fillThreadVectors(std::vector<Particle> &input)
         {
             for (int j = 0; j < elements; ++j)
             {
-                temp.push_back(&input[j*i]);
+                temp.push_back(&input[j+(i*elements)]);
                 indexinInputVec++;
             }
         } else
@@ -94,7 +97,7 @@ void createParticles(int ammount, float sizeMultiplier)
         float rng = rand() % 1000 + 1;
         if (rng < 800)
             rng += 200;
-
+        par.id = i;
         par.setSpeed(rng / 1000);
         particles.push_back(par);
 
@@ -104,23 +107,16 @@ void createParticles(int ammount, float sizeMultiplier)
     vecInUse = false;
 }
 
-sf::Vector2f calculateUnitVector(sf::Vector2f source, sf::Vector2f target)
-{
-    sf::Vector2f direction;
-    direction = (sf::Vector2f) target - source;
-    auto length = (float) std::sqrt(std::pow(direction.x, 2) + std::pow(direction.y, 2));
 
-    return sf::Vector2f(direction.x / length, direction.y / length);
-
-}
 
 //int collisionCheckCount = 0, maxCollisionsOnRound = 0;
 void updateParticles(Particle *par)
 {
-    sf::Vector2f axisLock(1,1);
+    //sf::Vector2f axisLock(1,1);
     int intersectCount = 0;
-    std::vector<Particle *> QTResult = quadtree.GetObjectsAt(par->location().x, par->location().y);
-    for (auto &i : QTResult)
+    std::vector<Particle *> QTResult = quadtree.GetObjectsAt(par->x, par->y);
+
+    /*for (auto &i : QTResult)
     {
         if (par->obj().getGlobalBounds().contains(i->location()))
         {
@@ -138,14 +134,16 @@ void updateParticles(Particle *par)
     }
     if (intersectCount < 1)
         par->setColor(255,255,255);
-
+*/
     if (mouseButtonIsPressed) {
         int reverse = rightButton ? -1 : 1;
         // move the vector
         par->moveTowards(sf::Vector2f(mouseLocation), VECTOR_SPEED_MULTIPLIER * reverse);
     }
 
+    par->prevLocation = par->location();
     par->update();
+
 
     /*if (collisionCheckCount > maxCollisionsOnRound)
         maxCollisionsOnRound = collisionCheckCount;
@@ -155,25 +153,19 @@ void updateParticles(Particle *par)
 }
 
 
-void updateThreads(int index)
-{
-    for (auto &i : subVectors[index])
-    {
-        updateParticles(i);
-    }
-}
-
-void updateThreads2(bool *done, std::vector<Particle *> input)
+void updateThreads(bool *done, std::vector<Particle *> *input)
 {
     std::cout << "Thread started:" << std::endl;
     while (true)
     {
-        if (done)
-            continue;
-
-        for (const auto &i : input)
+        if (*done)
         {
-            std::cout << "Updating particles..." << std::endl;
+            std::this_thread::sleep_for(3ms);
+            continue;
+        }
+        for (auto &i : *input)
+        {
+            //std::cout << "Updating particles..." << std::endl;
             updateParticles(i);
         }
 
@@ -228,10 +220,74 @@ void createButton(int col, int row, std::vector<std::string> optionTexts, int& t
 
 }
 
+int desiredParticles = 10000;
+void handleEvents(sf::Event *e, sf::Window *w)
+{
+    if (e->type == sf::Event::Closed)
+        w->close();
+
+    if (e->type == sf::Event::KeyPressed)
+    {
+        if (e->key.code == sf::Keyboard::Escape)
+        {
+            w->close();
+        }
+        if (e->key.code == sf::Keyboard::F5)
+        {
+            std::thread t1(createParticles, desiredParticles, 0.5);
+            t1.detach();
+        }
+
+        if (e->key.code == sf::Keyboard::Return)
+        {
+            int largestNumber = 0;
+            for (const auto &i : quadtree.GetLeafObjectsCount())
+            {
+                if (i > largestNumber)
+                    largestNumber = i;
+                std::cout << i << ", ";
+            }
+            std::cout << std::endl;
+            std::cout << "Largest Number = " << largestNumber << std::endl;
+
+        }
+    }
+
+    if (e->type == sf::Event::MouseButtonPressed || mouseButtonIsPressed)
+        mouseLocation = sf::Mouse::getPosition(*w);
+
+    if (e->type == sf::Event::MouseButtonPressed)
+    {
+        mouseButtonIsPressed = !mouseButtonIsPressed;
+        rightButton = sf::Mouse::isButtonPressed(sf::Mouse::Right);
+        //Seeing if the mouse is on any button
+        for (auto &i : buttons)
+        {
+            if (i.fRect.contains((sf::Vector2f)mouseLocation))
+            {
+                //If mouse is on a button and was clicked
+                std::cout << i.text_Vec[*i.target] << i.optionCount << std::endl;
+                std::cout << *i.target << std::endl;
+                if (*i.target < i.optionCount-1)
+                    *i.target = *i.target + 1;
+                else
+                    *i.target = 0;
+                i.text.setString(i.text_Vec[*i.target]);
+
+            }
+        }
+
+    } else if (e->type == sf::Event::MouseButtonReleased)
+    {
+        mouseButtonIsPressed = !mouseButtonIsPressed;
+        rightButton = sf::Mouse::isButtonPressed(sf::Mouse::Right);
+
+    }
+}
 
 
-
-
+int trailLength = 500;
+std::vector<sf::Texture> frames;
 int main()
 {
     initializeThreading();
@@ -264,11 +320,15 @@ int main()
     {
         threadObj *thread = new threadObj;
         thread->done = false;
-        thread->th = std::thread(updateThreads2, &thread->done, subVectors[l]);
+        thread->th = std::thread(updateThreads, &thread->done, &subVectors[l]);
+        //thread->th.detach();
         threads.push_back(thread);
     }
 
+    frames.reserve(trailLength);
 
+
+    bool first(true);
     while (window.isOpen())
     {
         window.display();
@@ -276,111 +336,33 @@ int main()
         sf::Event event;
         while (window.pollEvent(event))
         {
-            if (event.type == sf::Event::Closed)
-                window.close();
-
-            if (event.type == sf::Event::KeyPressed)
-            {
-                if (event.key.code == sf::Keyboard::Escape)
-                {
-                    window.close();
-                }
-                if (event.key.code == sf::Keyboard::F5)
-                {
-                    std::thread t1(createParticles, 1000, 0.5);
-                    t1.detach();
-                }
-            }
-
-            if (event.type == sf::Event::MouseButtonPressed || mouseButtonIsPressed)
-                mouseLocation = sf::Mouse::getPosition(window);
-
-            if (event.type == sf::Event::MouseButtonPressed)
-            {
-                mouseButtonIsPressed = !mouseButtonIsPressed;
-                rightButton = sf::Mouse::isButtonPressed(sf::Mouse::Right);
-                //Seeing if the mouse is on any button
-                for (auto &i : buttons)
-                {
-                    if (i.fRect.contains((sf::Vector2f)mouseLocation))
-                    {
-                        //If mouse is on a button and was clicked
-                        std::cout << i.text_Vec[*i.target] << i.optionCount << std::endl;
-                        std::cout << *i.target << std::endl;
-                        if (*i.target < i.optionCount-1)
-                            *i.target = *i.target + 1;
-                        else
-                            *i.target = 0;
-                        i.text.setString(i.text_Vec[*i.target]);
-
-
-                    }
-                }
-
-            } else if (event.type == sf::Event::MouseButtonReleased)
-            {
-                mouseButtonIsPressed = !mouseButtonIsPressed;
-                rightButton = sf::Mouse::isButtonPressed(sf::Mouse::Right);
-
-            }
-
-
+            handleEvents(&event, &window);
         }
+
         window.clear(bgColor ? sf::Color::White : sf::Color::Black);
 
         if (vecInUse)
             continue;
+
         quadtree.Clear();
         for (auto &k : particles)
         {
             quadtree.AddObject( &k );
         }
 
-        // to prevent segfault, skip particle update
-        // when populating particle vector
-
-        // update particles
-        //auto funcPoint = updateParticles;
-        //customForEach_Threaded( particles, updateParticles);
-
-
-
-        /*for (int l = 0; l < threadCount; ++l)
-        {
-            std::thread concurrencyThread(updateThreads, l);
-            concurrencyThread.detach();
-
-        }*/
-
-        /*__gnu_parallel::for_each(particles.begin(), particles.end(), [](auto &n)
-        {
-            updateParticles(&n);
-
-        });*/
-
-        /*__gnu_parallel::for_each(subVectors.begin(), subVectors.end(),
-        {
-            updateThreads();
-
-        });*/
-        for (const auto &l : threads)
+       for (const auto &l : threads)
         {
             l->done = false;
-        }
-
-        for (const auto &j : buttons)
-        {
-            window.draw(j.rect);
-            window.draw(j.text);
         }
 
         int loopcount = 0;
         while (true)
         {
+            std::this_thread::sleep_for(1ms);
             loopcount++;
             unsigned int completedThreads = 0;
             for (const auto &i : threads)
-                if (&i->done)
+                if (i->done)
                     completedThreads++;
 
             if (completedThreads >= threadCount)
@@ -394,10 +376,26 @@ int main()
             
         }
 
-        for (auto &i : particles)
+        for (const auto &m : subVectors)
         {
-            //updateParticles(&i);
+            for (const auto &i : m)
+            {
+                window.draw(i->obj());
+            }
+        }
+        /*for (auto &i : particles)
+        {
+            //if (i.location() == i.prevLocation)
+            //    std::cout << i.id << ", ";
             window.draw(i.obj());
+            //std::cout << "(" << setfill('0') << setw(3) <<  floor(i.location().x) << "," << setfill('0') << setw(3) << floor(i.location().y) << ") ";
+        }*/
+        //std::cout << std::endl;
+
+        for (const auto &j : buttons)
+        {
+            window.draw(j.rect);
+            window.draw(j.text);
         }
         if (DRAWQT)
             quadtree.Draw(window);

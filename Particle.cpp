@@ -4,6 +4,9 @@
 
 #include <cmath>
 #include "Particle.h"
+#include <chrono>
+#include <iostream>
+#include <numeric>
 
 
 Particle::Particle(float x, float y, float size = 1)
@@ -22,12 +25,16 @@ Particle::Particle(float x, float y, float size = 1)
 
 void Particle::moveTowards(sf::Vector2f target, float multiplier)
 {
-    sf::Vector2f direction;
+
+    //sf::Vector2f direction;
     direction = (sf::Vector2f) target - this->location();
+
     auto length = (float) std::sqrt(std::pow(direction.x, 2) + std::pow(direction.y, 2));
 
     direction = sf::Vector2f(direction.x / length, direction.y / length);
     this->move( &direction, multiplier);
+
+
 }
 
 void Particle::update()

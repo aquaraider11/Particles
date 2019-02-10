@@ -13,6 +13,7 @@
 class Particle {
 public:
     float x, y, size_QT;
+    int id;
     Particle(float x, float y, float size);
     bool interactionsEnabled = false;
     void update();
@@ -23,6 +24,7 @@ public:
     sf::FloatRect BBox;
     Quadtree<Particle> *parent = nullptr;
 
+    sf::Vector2f prevLocation;
     const sf::Vector2f& location() const { return location_; }
     const sf::CircleShape& obj() const { return obj_; }
 
@@ -37,6 +39,7 @@ private:
     float size = 1;
     float mass = 1;
     float speed = 1;
+    sf::Vector2f direction;
 
     void updateSize();
 };

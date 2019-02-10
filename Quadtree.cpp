@@ -45,13 +45,13 @@ bool Quadtree<T>::Subdivide(Quadtree<T> & target) {
         return true;
 
     NW = new Quadtree( x, y, width / 2.0f, height / 2.0f, level+1, maxLevel, maxObjects);
-    NW->objects.reserve(maxObjects+2);
+    //NW->objects.reserve(maxObjects+2);
     NE = new Quadtree( x + width / 2.0f, y, width / 2.0f, height / 2.0f, level+1, maxLevel, maxObjects);
-    NE->objects.reserve(maxObjects+2);
+    //NE->objects.reserve(maxObjects+2);
     SW = new Quadtree( x, y + height / 2.0f, width / 2.0f, height / 2.0f, level+1, maxLevel, maxObjects);
-    SW->objects.reserve(maxObjects+2);
+    //SW->objects.reserve(maxObjects+2);
     SE = new Quadtree( x + width / 2.0f, y + height / 2.0f, width / 2.0f, height / 2.0f, level+1, maxLevel, maxObjects);
-    SE->objects.reserve(maxObjects+2);
+    //SE->objects.reserve(maxObjects+2);
     NW->parent = NE->parent = SE->parent = SW->parent = &target;
     target.isSubdivided = true;
     return true;
@@ -64,8 +64,10 @@ void Quadtree<T>::AddObject( T *object ) {
     if (!FR.contains(Obj->location()))
         return;
 
-    if (this->objects.size() < this->maxObjects && !this->isSubdivided)
+    if (this->objects.size() < this->maxObjects && !this->isSubdivided) {
+        this->objects.reserve(maxObjects);
         this->objects.emplace_back(Obj);
+    }
     else if (this->Subdivide(*this))
     {
         for (const auto &i : objects)
@@ -87,12 +89,36 @@ void Quadtree<T>::AddObject( T *object ) {
 }
 
 template <class T>
+vector<int> Quadtree<T>::GetLeafObjectsCount()
+{
+    if ( !isSubdivided ) {
+        return std::vector<int>{int(objects.size())};
+    }
+    std::vector<int> NEv = NE->GetLeafObjectsCount();
+    std::vector<int> NWv = NW->GetLeafObjectsCount();
+    std::vector<int> SEv = SE->GetLeafObjectsCount();
+    std::vector<int> SWv = SW->GetLeafObjectsCount();
+
+    std::vector<int> returnVec;
+    returnVec.reserve(NEv.size() + NWv.size() + SEv.size() + SWv.size());
+    returnVec.insert(returnVec.end(), NEv.begin(), NEv.end());
+    returnVec.insert(returnVec.end(), NWv.begin(), NWv.end());
+    returnVec.insert(returnVec.end(), SEv.begin(), SEv.end());
+    returnVec.insert(returnVec.end(), SWv.begin(), SWv.end());
+    return returnVec;
+}
+
+
+
+template <class T>
 vector<T*> Quadtree<T>::GetObjectsAt( float _x, float _y ) {
     if ( !isSubdivided ) {
         return objects;
     }
 
     vector<T*> returnObjects, childReturnObjects;
+    returnObjects.reserve(maxObjects);
+    childReturnObjects.reserve(maxObjects);
     if ( !objects.empty() ) {
         returnObjects = objects;
     }
@@ -130,6 +156,7 @@ void Quadtree<T>::Clear() {
         if (!isSubdivided)
         {
             objects.clear();
+            objects.shrink_to_fit();
             delete(this);
             return;
         } else // Else let's clear the subtrees first
@@ -143,6 +170,7 @@ void Quadtree<T>::Clear() {
         if (!objects.empty())
         {
             objects.clear();
+            objects.shrink_to_fit();
         }
     }
     //When we get to the root tree (this is probably where the clear function starts, because you give it the root tree)
