@@ -19,6 +19,11 @@
 
 #include "Quadtree.h"
 
+#include "Button.h"
+
+
+sf::Font font_Glob;
+
 const float VECTOR_SPEED_MULTIPLIER = 1, GRAVITY_GLOBAL_VARIABLE = 0.2;
 int GRAVITY_ENABLED = 0, DRAWQT = 0;
 
@@ -31,6 +36,9 @@ Quadtree<Particle> quadtree( -10.0f, -10.0f, width + 20, height + 20, 0, 500, 8)
 
 int threadCount = std::thread::hardware_concurrency();
 std::vector<std::vector<Particle *>> subVectors;
+
+std::vector<button> buttons;
+
 
 struct threadObj
 {
@@ -174,53 +182,36 @@ void updateThreads(bool *done, std::vector<Particle *> *input)
 }
 
 
-/*
- * Font Global variable and button structure
- * Don't optimize font global variable to be included in any function, and it's loaded as first line of main() for a reason
- * Struct button: Pretty self explanatory, contains all the data that a button needs to work
- */
-sf::Font font_Glob;
-struct button
+struct crossHair
 {
-    sf::RectangleShape rect;
-    sf::FloatRect fRect;
-    sf::Text text;
-    std::vector<std::string> text_Vec;
-    int *target, optionCount;
-};
+    sf::CircleShape shape;
+    int initialSize = 5, sizeMult;
 
-/*
- * Create button function:
- * Creating buttons is expensive DO NOT CREATE LOT OF BUTTONS
- * Gives interactable toggle buttons with simple function with few inputs with power to affect any boolean assainged to it.. unles const
- * You can change the button appearance in this function
- *
- */
-std::vector<button> buttons;
-sf::Vector2i buttonSize(150,30);
-void createButton(int col, int row, std::vector<std::string> optionTexts, int& target)
+};
+crossHair CH;
+void initCrosshair()
 {
-    button button1;
-    sf::Vector2f pos(buttonSize.x * row, height - buttonSize.y * col);
-    button1.rect.setSize((sf::Vector2f)buttonSize);
-    button1.rect.setFillColor(sf::Color::Green);
-    button1.rect.setPosition(pos);
-    button1.rect.setOutlineColor(sf::Color::Black);
-    button1.rect.setOutlineThickness(2.5);
-    button1.fRect = button1.rect.getGlobalBounds();
-    button1.text.setFont(font_Glob);
-    button1.text.setString(optionTexts[0]);
-    button1.optionCount = optionTexts.size();
-    button1.text_Vec = optionTexts;
-    button1.text.setPosition(pos);
-    button1.text.setCharacterSize(25);
-    button1.text.setFillColor(sf::Color::Red);
-    button1.target = &target;
-    buttons.push_back(button1);
+    CH.shape.setRadius(CH.initialSize);
+    CH.shape.setFillColor(sf::Color::Transparent);
+    CH.shape.setOutlineColor(sf::Color::Red);
+    CH.shape.setOutlineThickness(0.1);
+
+}
+int old_Size;
+void updateCrosshair(sf::Vector2f pos, bool clicked)
+{
+    CH.shape.setPosition(pos);
+    CH.shape.setScale(CH.initialSize * (CH.sizeMult +1), CH.initialSize * (CH.sizeMult +1));
+    CH.shape.setOrigin(CH.initialSize, CH.initialSize);
+    if(clicked)
+        CH.shape.setOutlineColor(sf::Color::Green);
+    else
+        CH.shape.setOutlineColor(sf::Color::Red);
+
 
 }
 
-int desiredParticles = 10000;
+int desiredParticles = 1000;
 void handleEvents(sf::Event *e, sf::Window *w)
 {
     if (e->type == sf::Event::Closed)
@@ -285,12 +276,15 @@ void handleEvents(sf::Event *e, sf::Window *w)
     }
 }
 
-
 int trailLength = 500;
 std::vector<sf::Texture> frames;
 int main()
 {
     initializeThreading();
+    initCrosshair();
+    initButtonData(font_Glob, height, buttons);
+
+
     std::cout << threadCount << std::endl;
     StatDisplay sd;
 
@@ -302,19 +296,18 @@ int main()
     sdText.setFillColor(sf::Color::Green);
 
 
-
     int bgColor = 0;
     font_Glob.loadFromFile("arial.ttf");
     sf::RenderWindow window(sf::VideoMode(width, height), "lolkek!");
     window.setFramerateLimit(144);
 
-    createParticles(64, 1);
-
-
+    //createParticles(64, 1);
     std::vector<std::string> options1{"BGColor B", "BGColor W"};
     createButton(1,3,options1,bgColor);
     createButton(1,2,std::vector<std::string>{"Gravity OFF", "Gravity ON"}, GRAVITY_ENABLED);
     createButton(1,4,std::vector<std::string>{"Hide QT", "Draw QT"}, DRAWQT);
+    createButton(1,1,std::vector<std::string>{"Cursor 10", "Cursor 20", "Cursor 30", "Cursor 40", "Cursor 50"}, CH.sizeMult);
+
 
     for (int l = 0; l < threadCount; ++l)
     {
@@ -391,14 +384,15 @@ int main()
             //std::cout << "(" << setfill('0') << setw(3) <<  floor(i.location().x) << "," << setfill('0') << setw(3) << floor(i.location().y) << ") ";
         }*/
         //std::cout << std::endl;
-
+        updateCrosshair(sf::Vector2f(sf::Mouse::getPosition(window)), sf::Mouse::isButtonPressed(sf::Mouse::Left));
+        window.draw(CH.shape);
+        if (DRAWQT)
+            quadtree.Draw(window);
         for (const auto &j : buttons)
         {
             window.draw(j.rect);
             window.draw(j.text);
         }
-        if (DRAWQT)
-            quadtree.Draw(window);
 
 
         sdText.setString(sd.GetText());

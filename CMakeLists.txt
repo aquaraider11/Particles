@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-std=c++17 -fopenmp)
 
 
-add_executable(${EXECUTABLE_NAME} main.cpp Particle.cpp Particle.h StatDisplay/FPS.cpp StatDisplay/FPS.h StatDisplay/StatDisplay.cpp StatDisplay/StatDisplay.h StatDisplay/IDisplayable.h Quadtree.h Quadtree.cpp)
+add_executable(${EXECUTABLE_NAME} main.cpp Particle.cpp Particle.h StatDisplay/FPS.cpp StatDisplay/FPS.h StatDisplay/StatDisplay.cpp StatDisplay/StatDisplay.h StatDisplay/IDisplayable.h Quadtree.h Quadtree.cpp Button.cpp Button.h)
 
 FIND_PACKAGE(OpenMP REQUIRED)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
