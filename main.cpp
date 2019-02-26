@@ -20,6 +20,7 @@
 #include "Quadtree.h"
 
 #include "Button.h"
+#include "customShape.h"
 
 
 sf::Font font_Glob;
@@ -38,6 +39,8 @@ int threadCount = std::thread::hardware_concurrency();
 std::vector<std::vector<Particle *>> subVectors;
 
 std::vector<button> buttons;
+
+std::vector<sf::ConvexShape> customShapes;
 
 
 struct threadObj
@@ -161,6 +164,51 @@ void updateParticles(Particle *par)
 }
 
 
+
+
+void initCustomShapes_DEBUG()
+{
+    ln::customShape shape(30);
+    shape.setOrigin(30,30);
+
+    sf::ConvexShape poly;
+    poly.setPointCount(shape.getPointCount());
+    for (int i = 0; i < shape.getPointCount(); ++i) {
+        poly.setPoint(i, shape.getPoint(i));
+    }
+
+    poly.setPosition(300, 300);
+    poly.setFillColor(sf::Color::Magenta);
+
+    customShapes.push_back(poly);
+
+}
+
+/*void csJoin(sf::ConvexShape &shape, sf::CircleShape &brush)
+{
+    sf::Vector2f oldOriging = shape.getOrigin();
+    shape.setOrigin(brush.getOrigin());
+
+
+
+    shape.updateShape();
+}
+
+enum shapeEditOption {join, carve};
+void updateCustomShape(sf::ConvexShape &shape, sf::CircleShape &brush, shapeEditOption option = join)
+{
+    switch (option)
+    {
+        case join: csJoin(shape, brush);
+            break;
+        case carve:
+            break;
+        default:
+            std::cout << "Error" << std::endl;
+    }
+
+}*/
+
 void updateThreads(bool *done, std::vector<Particle *> *input)
 {
     std::cout << "Thread started:" << std::endl;
@@ -195,6 +243,8 @@ void initCrosshair()
     CH.shape.setFillColor(sf::Color::Transparent);
     CH.shape.setOutlineColor(sf::Color::Red);
     CH.shape.setOutlineThickness(0.1);
+    CH.shape.setOrigin(CH.initialSize, CH.initialSize);
+
 
 }
 int old_Size;
@@ -202,9 +252,13 @@ void updateCrosshair(sf::Vector2f pos, bool clicked)
 {
     CH.shape.setPosition(pos);
     CH.shape.setScale(CH.initialSize * (CH.sizeMult +1), CH.initialSize * (CH.sizeMult +1));
-    CH.shape.setOrigin(CH.initialSize, CH.initialSize);
-    if(clicked)
+    if(clicked) {
         CH.shape.setOutlineColor(sf::Color::Green);
+        for (int i = 0; i < CH.shape.getPointCount(); ++i) {
+            //std::cout << "Point " << i << " = [" <<CH.shape.getPoint(i).x << ", " << CH.shape.getPoint(i).y << "] ";
+        }
+        //std::cout << std::endl;
+    }
     else
         CH.shape.setOutlineColor(sf::Color::Red);
 
@@ -280,6 +334,7 @@ int trailLength = 500;
 std::vector<sf::Texture> frames;
 int main()
 {
+    initCustomShapes_DEBUG();
     initializeThreading();
     initCrosshair();
     initButtonData(font_Glob, height, buttons);
@@ -298,7 +353,7 @@ int main()
 
     int bgColor = 0;
     font_Glob.loadFromFile("arial.ttf");
-    sf::RenderWindow window(sf::VideoMode(width, height), "lolkek!");
+    sf::RenderWindow window(sf::VideoMode(width, height), "lolkek!", sf::Style::Titlebar | sf::Style::Close);
     window.setFramerateLimit(144);
 
     //createParticles(64, 1);
@@ -384,8 +439,8 @@ int main()
             //std::cout << "(" << setfill('0') << setw(3) <<  floor(i.location().x) << "," << setfill('0') << setw(3) << floor(i.location().y) << ") ";
         }*/
         //std::cout << std::endl;
-        updateCrosshair(sf::Vector2f(sf::Mouse::getPosition(window)), sf::Mouse::isButtonPressed(sf::Mouse::Left));
-        window.draw(CH.shape);
+        //updateCrosshair(sf::Vector2f(sf::Mouse::getPosition(window)), sf::Mouse::isButtonPressed(sf::Mouse::Left));
+        //window.draw(CH.shape);
         if (DRAWQT)
             quadtree.Draw(window);
         for (const auto &j : buttons)
@@ -393,6 +448,11 @@ int main()
             window.draw(j.rect);
             window.draw(j.text);
         }
+
+        /*for (const auto &n : customShapes)
+        {
+            window.draw(n);
+        }*/
 
 
         sdText.setString(sd.GetText());
