@@ -5,22 +5,87 @@
 #include <SFML/Graphics.hpp>
 #include <thread>
 #include <numeric>
-#include <future>
+//#include <future>
 #include <cmath>
-#include <mutex>
+//#include <mutex>
+#include <chrono>
+#include <iomanip>
+
+#include <parallel/algorithm>
 
 #include "Particle.h"
 #include "StatDisplay/StatDisplay.h"
 #include "StatDisplay/FPS.h"
 
+#include "Quadtree.h"
+
+#include "Button.h"
+#include "customShape.h"
+
+
+sf::Font font_Glob;
+
 const float VECTOR_SPEED_MULTIPLIER = 1, GRAVITY_GLOBAL_VARIABLE = 0.2;
-int GRAVITY_ENABLED = 0;
+int GRAVITY_ENABLED = 0, DRAWQT = 0;
 
 bool vecInUse = false, mouseButtonIsPressed = false, rightButton = false;
 std::vector<Particle> particles;
 sf::Vector2i mouseLocation = sf::Vector2i(0,0);
 unsigned int width = 1000, height = 800;
 sf::FloatRect border{-(float)width,(float)height-100,(float)width * 3,100};
+Quadtree<Particle> quadtree( -10.0f, -10.0f, width + 20, height + 20, 0, 500, 8);
+
+int threadCount = std::thread::hardware_concurrency();
+std::vector<std::vector<Particle *>> subVectors;
+
+std::vector<button> buttons;
+
+std::vector<sf::ConvexShape> customShapes;
+
+
+struct threadObj
+{
+    std::vector<Particle *> particles;
+    std::thread th;
+    bool done;
+};
+std::vector<threadObj *> threads;
+
+void initializeThreading()
+{
+    threads.reserve(threadCount);
+    for (int i = 0; i < threadCount; ++i)
+    {
+        std::vector<Particle*> temp;
+        temp.reserve(50);
+        subVectors.push_back(temp);
+    }
+}
+
+void fillThreadVectors(std::vector<Particle> &input)
+{
+    int elements = floor(input.size() / threadCount), indexinInputVec = 0;
+    std::cout << "elements = " << elements << std::endl;
+    for (int i = 0; i < threadCount; ++i)
+    {
+        std::vector<Particle *> temp;
+        if(i < threadCount-1)
+        {
+            for (int j = 0; j < elements; ++j)
+            {
+                temp.push_back(&input[j+(i*elements)]);
+                indexinInputVec++;
+            }
+        } else
+        {
+            for (int k = indexinInputVec; k < input.size(); ++k)
+            {
+                temp.push_back(&input[k]);
+            }
+        }
+        subVectors[i] = temp;
+    }
+}
 
 
 void createParticles(int ammount, float sizeMultiplier)
@@ -40,92 +105,242 @@ void createParticles(int ammount, float sizeMultiplier)
 
         par.setColor(rand() % 255 + 1, rand() % 255 + 1, rand() % 255 + 1);
 
-        float rng = rand() % 100 + 1;
-        if (rng < 80)
-            rng += 20;
-
-        par.setSpeed(rng / 100);
-
+        float rng = rand() % 1000 + 1;
+        if (rng < 800)
+            rng += 200;
+        par.id = i;
+        par.setSpeed(rng / 1000);
         particles.push_back(par);
 
 
     }
-
+    fillThreadVectors(particles);
     vecInUse = false;
 }
 
+
+
+//int collisionCheckCount = 0, maxCollisionsOnRound = 0;
 void updateParticles(Particle *par)
 {
+    //sf::Vector2f axisLock(1,1);
+    int intersectCount = 0;
+    std::vector<Particle *> QTResult = quadtree.GetObjectsAt(par->x, par->y);
+
+    /*for (auto &i : QTResult)
+    {
+        if (par->obj().getGlobalBounds().contains(i->location()))
+        {
+            intersectCount++;
+
+            par->setColor(255,0,0);
+            //collisionCheckCount++;
+        }
+        if (i->obj().getGlobalBounds().contains(par->location()))
+        {
+            i->setColor(255, 0, 0);
+            intersectCount++;
+        }
+
+    }
+    if (intersectCount < 1)
+        par->setColor(255,255,255);
+*/
     if (mouseButtonIsPressed) {
-        // calculate vector from particle to the mouse
-        sf::Vector2f direction;
-        direction = (sf::Vector2f) mouseLocation - par->location();
-
-        // make it a unit vector and apply speed modifiers
-        auto length = (float) std::sqrt(std::pow(direction.x, 2) + std::pow(direction.y, 2));
-        direction.x = direction.x / length;
-        direction.y = direction.y / length;
-
         int reverse = rightButton ? -1 : 1;
-
         // move the vector
-        par->move(&direction, VECTOR_SPEED_MULTIPLIER * reverse);
+        par->moveTowards(sf::Vector2f(mouseLocation), VECTOR_SPEED_MULTIPLIER * reverse);
     }
 
+    par->prevLocation = par->location();
     par->update();
+
+
+    /*if (collisionCheckCount > maxCollisionsOnRound)
+        maxCollisionsOnRound = collisionCheckCount;
+    std::cout << maxCollisionsOnRound << std::endl;
+    collisionCheckCount = 0;*/
+
 }
 
 
-/*
- * Font Global variable and button structure
- * Don't optimize font global variable to be included in any function, and it's loaded as first line of main() for a reason
- * Struct button: Pretty self explanatory, contains all the data that a button needs to work
- */
-sf::Font font_Glob;
-struct button
+
+
+void initCustomShapes_DEBUG()
 {
-    sf::RectangleShape rect;
-    sf::FloatRect fRect;
-    sf::Text text;
-    std::vector<std::string> text_Vec;
-    int *target, optionCount;
+    ln::customShape shape(30);
+    shape.setOrigin(30,30);
+
+    sf::ConvexShape poly;
+    poly.setPointCount(shape.getPointCount());
+    for (int i = 0; i < shape.getPointCount(); ++i) {
+        poly.setPoint(i, shape.getPoint(i));
+    }
+
+    poly.setPosition(300, 300);
+    poly.setFillColor(sf::Color::Magenta);
+
+    customShapes.push_back(poly);
+
+}
+
+/*void csJoin(sf::ConvexShape &shape, sf::CircleShape &brush)
+{
+    sf::Vector2f oldOriging = shape.getOrigin();
+    shape.setOrigin(brush.getOrigin());
+
+
+
+    shape.updateShape();
+}
+
+enum shapeEditOption {join, carve};
+void updateCustomShape(sf::ConvexShape &shape, sf::CircleShape &brush, shapeEditOption option = join)
+{
+    switch (option)
+    {
+        case join: csJoin(shape, brush);
+            break;
+        case carve:
+            break;
+        default:
+            std::cout << "Error" << std::endl;
+    }
+
+}*/
+
+void updateThreads(bool *done, std::vector<Particle *> *input)
+{
+    std::cout << "Thread started:" << std::endl;
+    while (true)
+    {
+        if (*done)
+        {
+            std::this_thread::sleep_for(3ms);
+            continue;
+        }
+        for (auto &i : *input)
+        {
+            //std::cout << "Updating particles..." << std::endl;
+            updateParticles(i);
+        }
+
+        *done = true;
+    }
+}
+
+
+struct crossHair
+{
+    sf::CircleShape shape;
+    int initialSize = 5, sizeMult;
+
 };
-
-/*
- * Create button function:
- * Creating buttons is expensive DO NOT CREATE LOT OF BUTTONS
- * Gives interactable toggle buttons with simple function with few inputs with power to affect any boolean assainged to it.. unles const
- * You can change the button appearance in this function
- *
- */
-std::vector<button> buttons;
-sf::Vector2i buttonSize(150,30);
-void createButton(int col, int row, std::vector<std::string> optionTexts, int& target)
+crossHair CH;
+void initCrosshair()
 {
-    button button1;
-    sf::Vector2f pos(buttonSize.x * row, height - buttonSize.y * col);
-    button1.rect.setSize((sf::Vector2f)buttonSize);
-    button1.rect.setFillColor(sf::Color::Green);
-    button1.rect.setPosition(pos);
-    button1.rect.setOutlineColor(sf::Color::Black);
-    button1.rect.setOutlineThickness(2.5);
-    button1.fRect = button1.rect.getGlobalBounds();
-    button1.text.setFont(font_Glob);
-    button1.text.setString(optionTexts[0]);
-    button1.optionCount = optionTexts.size();
-    button1.text_Vec = optionTexts;
-    button1.text.setPosition(pos);
-    button1.text.setCharacterSize(25);
-    button1.text.setFillColor(sf::Color::Red);
-    button1.target = &target;
-    buttons.push_back(button1);
+    CH.shape.setRadius(CH.initialSize);
+    CH.shape.setFillColor(sf::Color::Transparent);
+    CH.shape.setOutlineColor(sf::Color::Red);
+    CH.shape.setOutlineThickness(0.1);
+    CH.shape.setOrigin(CH.initialSize, CH.initialSize);
+
+
+}
+int old_Size;
+void updateCrosshair(sf::Vector2f pos, bool clicked)
+{
+    CH.shape.setPosition(pos);
+    CH.shape.setScale(CH.initialSize * (CH.sizeMult +1), CH.initialSize * (CH.sizeMult +1));
+    if(clicked) {
+        CH.shape.setOutlineColor(sf::Color::Green);
+        for (int i = 0; i < CH.shape.getPointCount(); ++i) {
+            //std::cout << "Point " << i << " = [" <<CH.shape.getPoint(i).x << ", " << CH.shape.getPoint(i).y << "] ";
+        }
+        //std::cout << std::endl;
+    }
+    else
+        CH.shape.setOutlineColor(sf::Color::Red);
+
 
 }
 
+int desiredParticles = 1000;
+void handleEvents(sf::Event *e, sf::Window *w)
+{
+    if (e->type == sf::Event::Closed)
+        w->close();
 
+    if (e->type == sf::Event::KeyPressed)
+    {
+        if (e->key.code == sf::Keyboard::Escape)
+        {
+            w->close();
+        }
+        if (e->key.code == sf::Keyboard::F5)
+        {
+            std::thread t1(createParticles, desiredParticles, 0.5);
+            t1.detach();
+        }
 
+        if (e->key.code == sf::Keyboard::Return)
+        {
+            int largestNumber = 0;
+            for (const auto &i : quadtree.GetLeafObjectsCount())
+            {
+                if (i > largestNumber)
+                    largestNumber = i;
+                std::cout << i << ", ";
+            }
+            std::cout << std::endl;
+            std::cout << "Largest Number = " << largestNumber << std::endl;
+
+        }
+    }
+
+    if (e->type == sf::Event::MouseButtonPressed || mouseButtonIsPressed)
+        mouseLocation = sf::Mouse::getPosition(*w);
+
+    if (e->type == sf::Event::MouseButtonPressed)
+    {
+        mouseButtonIsPressed = !mouseButtonIsPressed;
+        rightButton = sf::Mouse::isButtonPressed(sf::Mouse::Right);
+        //Seeing if the mouse is on any button
+        for (auto &i : buttons)
+        {
+            if (i.fRect.contains((sf::Vector2f)mouseLocation))
+            {
+                //If mouse is on a button and was clicked
+                std::cout << i.text_Vec[*i.target] << i.optionCount << std::endl;
+                std::cout << *i.target << std::endl;
+                if (*i.target < i.optionCount-1)
+                    *i.target = *i.target + 1;
+                else
+                    *i.target = 0;
+                i.text.setString(i.text_Vec[*i.target]);
+
+            }
+        }
+
+    } else if (e->type == sf::Event::MouseButtonReleased)
+    {
+        mouseButtonIsPressed = !mouseButtonIsPressed;
+        rightButton = sf::Mouse::isButtonPressed(sf::Mouse::Right);
+
+    }
+}
+
+int trailLength = 500;
+std::vector<sf::Texture> frames;
 int main()
 {
+    initCustomShapes_DEBUG();
+    initializeThreading();
+    initCrosshair();
+    initButtonData(font_Glob, height, buttons);
+
+
+    std::cout << threadCount << std::endl;
     StatDisplay sd;
 
     FPS fps;
@@ -136,37 +351,32 @@ int main()
     sdText.setFillColor(sf::Color::Green);
 
 
-
     int bgColor = 0;
     font_Glob.loadFromFile("arial.ttf");
-    sf::RenderWindow window(sf::VideoMode(width, height), "lolkek!");
+    sf::RenderWindow window(sf::VideoMode(width, height), "lolkek!", sf::Style::Titlebar | sf::Style::Close);
     window.setFramerateLimit(144);
 
-    createParticles(1000, 1);
-
-
-
-    /*
-     *  Create button to change background color
-     *  First 2 variables set the button location (cols, rows)
-     *  Third variable takes vector of strings as input to define how many options button has and what are the texts of those buttons
-     *  (std::vector<std::string> foo{"option1", "option2")
-     *  If you don't want the text to change, but want multiple options, just add several same texts to above mentioned vector
-     *  Last option is integer, that gets iterated by the button, and flipped to 0 when reaching foo.size() -1 of above mentioned vector
-     *
-     *  If only 2 options are mentioned, the int pointed in the last variable can be used as a boolean but the values are "flipped"
-     *                        Function     Button         foo[1]            foo[0]
-     *                          \/          \/              \/                \/
-     *  for example (        window.clear(bgColor ? sf::Color::White : sf::Color::Black);       )
-     *
-     *  Witch is reasonable considering that boolean true is 1, and false is 0
-     *
-     */
-
+    //createParticles(64, 1);
     std::vector<std::string> options1{"BGColor B", "BGColor W"};
     createButton(1,3,options1,bgColor);
     createButton(1,2,std::vector<std::string>{"Gravity OFF", "Gravity ON"}, GRAVITY_ENABLED);
+    createButton(1,4,std::vector<std::string>{"Hide QT", "Draw QT"}, DRAWQT);
+    createButton(1,1,std::vector<std::string>{"Cursor 10", "Cursor 20", "Cursor 30", "Cursor 40", "Cursor 50"}, CH.sizeMult);
 
+
+    for (int l = 0; l < threadCount; ++l)
+    {
+        threadObj *thread = new threadObj;
+        thread->done = false;
+        thread->th = std::thread(updateThreads, &thread->done, &subVectors[l]);
+        //thread->th.detach();
+        threads.push_back(thread);
+    }
+
+    frames.reserve(trailLength);
+
+
+    bool first(true);
     while (window.isOpen())
     {
         window.display();
@@ -174,79 +384,87 @@ int main()
         sf::Event event;
         while (window.pollEvent(event))
         {
-            if (event.type == sf::Event::Closed)
-                window.close();
-
-            if (event.type == sf::Event::KeyPressed)
-            {
-                if (event.key.code == sf::Keyboard::Escape)
-                {
-                    window.close();
-                }
-                if (event.key.code == sf::Keyboard::F5)
-                {
-                    std::thread t1(createParticles, 10000, 0.5);
-                    t1.detach();
-                }
-            }
-
-            if (event.type == sf::Event::MouseButtonPressed || mouseButtonIsPressed)
-                mouseLocation = sf::Mouse::getPosition(window);
-
-            if (event.type == sf::Event::MouseButtonPressed)
-            {
-                mouseButtonIsPressed = !mouseButtonIsPressed;
-                rightButton = sf::Mouse::isButtonPressed(sf::Mouse::Right);
-                //Seeing if the mouse is on any button
-                for (auto &i : buttons)
-                {
-                    if (i.fRect.contains((sf::Vector2f)mouseLocation))
-                    {
-                        //If mouse is on a button and was clicked
-                        std::cout << i.text_Vec[*i.target] << i.optionCount << std::endl;
-                        std::cout << *i.target << std::endl;
-                        if (*i.target < i.optionCount-1)
-                            *i.target = *i.target + 1;
-                        else
-                            *i.target = 0;
-                        i.text.setString(i.text_Vec[*i.target]);
-
-
-                    }
-                }
-
-            } else if (event.type == sf::Event::MouseButtonReleased)
-            {
-                mouseButtonIsPressed = !mouseButtonIsPressed;
-                rightButton = sf::Mouse::isButtonPressed(sf::Mouse::Right);
-
-            }
-
-
+            handleEvents(&event, &window);
         }
 
         window.clear(bgColor ? sf::Color::White : sf::Color::Black);
 
-        // to prevent segfault, skip particle update
-        // when populating particle vector
         if (vecInUse)
             continue;
 
-        // update particles
-        for (auto &i : particles)
+        quadtree.Clear();
+        for (auto &k : particles)
         {
-            updateParticles(&i);
-            window.draw(i.obj());
+            quadtree.AddObject( &k );
         }
+
+       for (const auto &l : threads)
+        {
+            l->done = false;
+        }
+
+        int loopcount = 0;
+        while (true)
+        {
+            std::this_thread::sleep_for(1ms);
+            loopcount++;
+            unsigned int completedThreads = 0;
+            for (const auto &i : threads)
+                if (i->done)
+                    completedThreads++;
+
+            if (completedThreads >= threadCount)
+                break;
+            if (loopcount > 1000)
+            {
+                std::cout << "Infinite Loop" << std::endl;
+                window.close();
+                break;
+            }
+            
+        }
+
+        for (const auto &m : subVectors)
+        {
+            for (const auto &i : m)
+            {
+                window.draw(i->obj());
+            }
+        }
+        /*for (auto &i : particles)
+        {
+            //if (i.location() == i.prevLocation)
+            //    std::cout << i.id << ", ";
+            window.draw(i.obj());
+            //std::cout << "(" << setfill('0') << setw(3) <<  floor(i.location().x) << "," << setfill('0') << setw(3) << floor(i.location().y) << ") ";
+        }*/
+        //std::cout << std::endl;
+        //updateCrosshair(sf::Vector2f(sf::Mouse::getPosition(window)), sf::Mouse::isButtonPressed(sf::Mouse::Left));
+        //window.draw(CH.shape);
+        if (DRAWQT)
+            quadtree.Draw(window);
         for (const auto &j : buttons)
         {
             window.draw(j.rect);
             window.draw(j.text);
         }
 
+        /*for (const auto &n : customShapes)
+        {
+            window.draw(n);
+        }*/
+
+
         sdText.setString(sd.GetText());
         window.draw(sdText);
+
+
+    }
+    for (const auto &m : threads)
+    {
+        delete(m);
     }
 
     return 0;
 }
+

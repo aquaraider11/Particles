@@ -3,8 +3,11 @@
 //
 
 #include <cmath>
-
 #include "Particle.h"
+#include <chrono>
+#include <iostream>
+#include <numeric>
+
 
 Particle::Particle(float x, float y, float size = 1)
 {
@@ -13,8 +16,25 @@ Particle::Particle(float x, float y, float size = 1)
     this->size = size;
 
     obj_ = sf::CircleShape(this->size);
-    obj_.setFillColor(sf::Color(255, 255, 255));
+    //obj_.setFillColor(sf::Color(255, 255, 255));
+    obj_.setFillColor(sf::Color::White);
     obj_.setPosition(location_);
+    BBox = obj_.getGlobalBounds();
+}
+
+
+void Particle::moveTowards(sf::Vector2f target, float multiplier)
+{
+
+    //sf::Vector2f direction;
+    direction = (sf::Vector2f) target - this->location();
+
+    auto length = (float) std::sqrt(std::pow(direction.x, 2) + std::pow(direction.y, 2));
+
+    direction = sf::Vector2f(direction.x / length, direction.y / length);
+    this->move( &direction, multiplier);
+
+
 }
 
 void Particle::update()
@@ -26,14 +46,20 @@ void Particle::update()
     // update location
     location_ += velocity_;
     updateSize();
+
+    x = location().x;
+    y = location().y;
+
     obj_.setPosition(location_);
+    BBox = obj_.getGlobalBounds();
+
 }
 
 void Particle::move(const sf::Vector2f* vector, float multiplier)
 {
     // apply vector to velocity
-    velocity_.x += vector->x * speed * multiplier;
-    velocity_.y += vector->y * speed * multiplier;
+    velocity_.x += vector->x * speed * multiplier + ((float)((rand() % 100 +1) - 50) / 150);
+    velocity_.y += vector->y * speed * multiplier + ((float)((rand() % 100 +1) - 50) / 150);
 }
 
 void Particle::updateSize()
@@ -45,6 +71,7 @@ void Particle::updateSize()
     scale = std::fmin(SCALE_MAX, std::fmax(SCALE_MIN, scale));
 
     // set the scale
+    size_QT = scale;
     obj_.setScale(scale, scale);
 }
 
